@@ -28,13 +28,29 @@ Texnikum pedagoglari tayyorlagan resurslar (prezentatsiya, ma'ruza matni, test v
 
 ## Ishga tushirish
 
-### Docker bilan (server uchun tavsiya etiladi)
+### Serverga o'rnatish (Contabo VPS, Ubuntu 22.04/24.04)
+
+1. Contabo panelida VPS'ning IP manzili va root parolini oling.
+2. Kompyuteringizdan serverga kiring: `ssh root@SERVER_IP`
+3. Bitta buyruq bilan o'rnating:
 
 ```bash
-ADMIN_PASSWORD=kuchli-parol docker compose up -d --build
+curl -fsSL https://raw.githubusercontent.com/Jasurbekmurphy/bilim/main/deploy/install.sh | bash
 ```
 
-Sayt `http://SERVER_IP:8000` manzilida ochiladi. Barcha ma'lumotlar (baza, fayllar) `./data` papkasida saqlanadi, shu papkadan zaxira nusxa oling.
+Skript Docker'ni o'rnatadi, kodni `/opt/bilim` ga yuklab oladi, saytni ishga tushiradi va oxirida sayt manzili hamda admin parolini chiqaradi. Har kuni zaxira nusxa `/opt/bilim-backups` ga yoziladi (oxirgi 14 kun).
+
+**Domen ulash (HTTPS bilan):** domenning DNS sozlamasida `A` yozuvini server IP'siga yo'naltiring, keyin:
+
+```bash
+bash /opt/bilim/deploy/install.sh bilim.texnikum.uz
+```
+
+HTTPS sertifikati avtomatik olinadi va yangilanadi.
+
+**Yangilash:** GitHub'ga yangi kod qo'shilgandan keyin serverda `bash /opt/bilim/deploy/install.sh` ni qayta ishga tushiring. Ma'lumotlar saqlanib qoladi.
+
+**Zaxiradan tiklash:** `cd /opt/bilim && docker compose down && rm -rf data && tar -xzf /opt/bilim-backups/bilim-SANA.tar.gz && docker compose up -d`
 
 ### Docker'siz
 

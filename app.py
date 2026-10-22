@@ -182,11 +182,13 @@ def init_db():
     db.executescript(SCHEMA)
     if not db.execute("SELECT 1 FROM users WHERE role = 'admin'").fetchone():
         password = os.environ.get("ADMIN_PASSWORD", "admin123")
-        db.execute(
-            "INSERT INTO users (username, password_hash, full_name, role, must_change_password, created_at)"
+        # OR IGNORE: bir nechta gunicorn worker bir vaqtda ishga tushganda xato bermasligi uchun
+        cur = db.execute(
+            "INSERT OR IGNORE INTO users (username, password_hash, full_name, role, must_change_password, created_at)"
             " VALUES ('admin', ?, 'Administrator', 'admin', 1, ?)",
             (generate_password_hash(password), now_str()))
-        print(f"Admin yaratildi: login 'admin', parol '{password}' (birinchi kirishda o'zgartiriladi)")
+        if cur.rowcount:
+            print(f"Admin yaratildi: login 'admin', parol '{password}' (birinchi kirishda o'zgartiriladi)")
     db.commit()
     db.close()
 

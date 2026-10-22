@@ -1,10 +1,27 @@
 services:
   web:
     build: .
-    ports:
-      - "8000:8000"
     environment:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-100}
     volumes:
       - ./data:/data
     restart: unless-stopped
+
+  # Tashqi so'rovlarni qabul qiladi; domen berilsa HTTPS sertifikatini o'zi oladi
+  caddy:
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      - web
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
