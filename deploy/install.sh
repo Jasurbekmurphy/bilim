@@ -3,6 +3,7 @@
 #   Domensiz:  sudo bash install.sh
 #   Domen bilan: sudo bash install.sh bilim.texnikum.uz
 set -euo pipefail
+trap 'echo "XATO: install.sh $LINENO-qatorda to'"'"'xtadi" >&2' ERR
 
 REPO_URL="https://github.com/Jasurbekmurphy/bilim.git"
 APP_DIR="/opt/bilim"
@@ -30,7 +31,8 @@ fi
 cd "$APP_DIR"
 
 if [ ! -f .env ]; then
-  ADMIN_PASSWORD="$(tr -dc 'a-km-np-z2-9' </dev/urandom | head -c 12)"
+  # head avval o'qiydi: aks holda pipefail tufayli tr SIGPIPE bilan yiqilib, skript jim to'xtaydi
+  ADMIN_PASSWORD="$(head -c 512 /dev/urandom | LC_ALL=C tr -dc 'a-km-np-z2-9' | cut -c1-12)"
   {
     echo "ADMIN_PASSWORD=$ADMIN_PASSWORD"
     echo "SITE_ADDRESS=${DOMAIN:-:80}"
@@ -41,7 +43,7 @@ elif [ -n "$DOMAIN" ]; then
   sed -i "s|^SITE_ADDRESS=.*|SITE_ADDRESS=$DOMAIN|" .env
 fi
 
-if command -v ufw >/dev/null 2>&1 && ufw status | grep -q "Status: active"; then
+if command -v ufw >/dev/null 2>&1 && ufw status | grep "Status: active" >/dev/null; then
   ufw allow 80/tcp && ufw allow 443/tcp
 fi
 
