@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Profil · Bilimlar manbai{% endblock %}
+{% block content %}
+<div class="two">
+  <div class="card">
+    <div class="profile-head">
+      <span class="avatar">{{ user.full_name[:1]|upper }}</span>
+      <div><h1 style="margin:0">{{ user.full_name }}</h1><span class="pill">{{ ROLE_NAMES[user.role] }}</span></div>
+    </div>
+    <dl class="info-list">
+      <dt>Login</dt><dd>{{ user.username }}</dd>
+      {% if department %}<dt>Kafedra</dt><dd>{{ department }}</dd>{% endif %}
+      {% if user.group_name %}<dt>Guruh</dt><dd>{{ user.group_name }}</dd>{% endif %}
+      <dt>Ro'yxatdan o'tgan</dt><dd>{{ user.created_at[:10] }}</dd>
+    </dl>
+    <div class="row" style="margin-top:22px">
+      <a class="btn ghost" href="{{ url_for('change_password') }}">🔑 Parolni o'zgartirish</a>
+      {% if user.role in ('teacher', 'admin') %}<a class="btn ghost" href="{{ url_for('my_resources') }}">📁 Mening resurslarim</a>{% endif %}
+    </div>
+  </div>
+  <div class="card">
+    <div class="tg-box">
+      <span class="tg-icon">✈</span>
+      <div>
+        <h2 style="margin:0 0 6px">Telegram {% if user.telegram_chat_id %}<span class="pill ok">Ulangan</span>{% else %}<span class="pill off">Ulanmagan</span>{% endif %}</h2>
+        <p class="muted">Parolni unutsangiz, tiklash kodi Telegram botimiz orqali keladi. Ulash bir daqiqa oladi: tugmani bosing, Telegram ochiladi, «Start» ni bosing.</p>
+        {% if not telegram_enabled %}
+          <p class="muted small">Telegram bot hozircha sozlanmagan. Administrator sozlagach, bu yerda ulash tugmasi ishlaydi.</p>
+        {% elif user.telegram_chat_id %}
+          <form method="post" action="{{ url_for('telegram_unlink') }}" class="inline" onsubmit="return confirm('Telegram uzilsinmi?')">
+            <input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn ghost small">Uzish</button>
+          </form>
+        {% else %}
+          <form method="post" action="{{ url_for('telegram_link') }}" target="_blank" onsubmit="setTimeout(() => location.reload(), 15000)">
+            <input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn tg">✈ Telegramni ulash</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

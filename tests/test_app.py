@@ -1,4 +1,5 @@
 import io
+import re
 import sqlite3
 
 import pymupdf
@@ -59,7 +60,7 @@ def test_full_flow(app_module):
     db.execute("UPDATE users SET password_hash = ? WHERE username = 'ali'", (A.generate_password_hash("ali123"),))
     db.commit()
     login(student, "ali", "ali123")
-    assert "Payvandlash asoslari" in student.get("/?department=1&teacher=2").text
+    assert "Payvandlash asoslari" in student.get("/resurslar?department=1&teacher=2").text
     post(student, f"/resurs/{rid}/baho", {"value": "4"})
     post(student, f"/resurs/{rid}/like")
     post(student, f"/resurs/{rid}/izoh", {"text": "Birinchi"})
@@ -75,3 +76,73 @@ def test_full_flow(app_module):
     stats = admin.get("/admin/statistika").text
     assert "Ali Valiyev" in stats and "Usta" in stats
     assert "Usta" in admin.get("/oqituvchilar").text
+
+
+def test_landing_and_registration(app_module):
+    A = app_module
+    c = A.app.test_client()
+    page = c.get("/").text
+    assert "Ro'yxatdan o'tish" in page and "Om qonuni" in page
+    r = post(c, "/royxatdan-otish", {"full_name": "Rahimov Azizbek", "username": "aziz", "group_name": "MS-21",
+                                     "password": "secret1", "password2": "secret1"})
+    assert r.headers["Location"].endswith("/profil")
+    assert "Rahimov Azizbek" in c.get("/profil").text
+    assert c.get("/").headers["Location"].endswith("/resurslar")  # kirgan foydalanuvchi landingni ko'rmaydi
+    db = sqlite3.connect(A.DB_PATH)
+    assert db.execute("SELECT role FROM users WHERE username = 'aziz'").fetchone() == ("student",)
+    # band login va zaif parol rad etiladi
+    other = A.app.test_client()
+    r = post(other, "/royxatdan-otish", {"full_name": "Boshqa Odam", "username": "AZIZ",
+                                         "password": "secret1", "password2": "secret1"}, follow_redirects=True)
+    assert "band" in r.text
+    assert db.execute("SELECT COUNT(*) FROM users WHERE role = 'student'").fetchone() == (1,)
+
+
+def test_telegram_link_and_password_reset(app_module, monkeypatch):
+    A = app_module
+    sent = []
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "test")
+    monkeypatch.setattr(A.telegram, "bot_username", lambda: "bilim_test_bot")
+    monkeypatch.setattr(A.telegram, "send_message", lambda chat_id, text: sent.append((chat_id, text)))
+    c = A.app.test_client()
+    post(c, "/royxatdan-otish", {"full_name": "Olimova Madina", "username": "madina",
+                                 "password": "secret1", "password2": "secret1"})
+    r = post(c, "/profil/telegram")
+    token = r.headers["Location"].split("start=")[1]
+    assert r.headers["Location"].startswith("https://t.me/bilim_test_bot?start=")
+    assert A.link_telegram("noto'g'ri", 777) is None
+    assert A.link_telegram(token, 777) == "Olimova Madina"
+    assert A.link_telegram(token, 777) is None  # havola bir martalik
+    post(c, "/logout")
+
+    anon = A.app.test_client()
+    r = post(anon, "/parolni-tiklash", {"username": "madina"})
+    assert r.headers["Location"].endswith("/parolni-tiklash/kod")
+    chat_id, text = sent[-1]
+    code = re.search(r"<b>(\d{6})</b>", text).group(1)
+    assert chat_id == 777
+    r = post(anon, "/parolni-tiklash/kod", {"code": "000000" if code != "000000" else "111111",
+                                            "new": "newpass1", "new2": "newpass1"}, follow_redirects=True)
+    assert "Kod noto" in r.text
+    r = post(anon, "/parolni-tiklash/kod", {"code": code, "new": "newpass1", "new2": "newpass1"})
+    assert r.headers["Location"].endswith("/login")
+    assert login(anon, "madina", "newpass1").headers["Location"].endswith("/resurslar")
+
+
+def test_migrates_old_database(tmp_path, monkeypatch):
+    old = sqlite3.connect(tmp_path / "texnikum.db")
+    old.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL,"
+                " full_name TEXT NOT NULL, role TEXT NOT NULL, department_id INTEGER, group_name TEXT,"
+                " is_active INTEGER NOT NULL DEFAULT 1, must_change_password INTEGER NOT NULL DEFAULT 0,"
+                " created_at TEXT NOT NULL)")
+    old.execute("INSERT INTO users (username, password_hash, full_name, role, created_at)"
+                " VALUES ('admin', 'x', 'Admin', 'admin', '2026-01-01')")
+    old.commit()
+    old.close()
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    import importlib
+    import app as A
+    importlib.reload(A)
+    cols = {r[1] for r in sqlite3.connect(A.DB_PATH).execute("PRAGMA table_info(users)")}
+    assert {"telegram_chat_id", "telegram_link_token"} <= cols
+    assert sqlite3.connect(A.DB_PATH).execute("SELECT COUNT(*) FROM users").fetchone() == (1,)

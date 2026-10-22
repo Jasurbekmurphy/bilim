@@ -48,7 +48,9 @@ fi
 if [ -n "$DOMAIN" ]; then set_env SITE_ADDRESS "$DOMAIN"; fi
 grep -q '^SITE_ADDRESS=' .env || set_env SITE_ADDRESS ":80"
 grep -q '^WEB_PORT=' .env || set_env WEB_PORT 8100
+grep -q '^TELEGRAM_BOT_TOKEN=' .env || set_env TELEGRAM_BOT_TOKEN ""
 ADDR="$(grep '^SITE_ADDRESS=' .env | cut -d= -f2)"
+if [ "$ADDR" != ":80" ]; then set_env SITE_URL "https://$ADDR"; fi
 WEB_PORT="$(grep '^WEB_PORT=' .env | cut -d= -f2)"
 
 # Serverda boshqa saytlarga xizmat qilayotgan nginx bo'lsa, unga tegmaymiz va platformani u orqali ulaymiz.
@@ -134,3 +136,6 @@ fi
 echo "Admin login: admin   boshlang'ich parol: $(grep '^ADMIN_PASSWORD=' .env | cut -d= -f2)"
 echo "(Birinchi kirishda parol o'zgartiriladi; keyin bu parol endi ishlamaydi.)"
 echo "Zaxira nusxalar har kuni $BACKUP_DIR papkasiga yoziladi."
+if [ -z "$(grep '^TELEGRAM_BOT_TOKEN=' .env | cut -d= -f2)" ]; then
+  echo "Telegram bot ulanmagan: @BotFather'dan token olib, $APP_DIR/.env dagi TELEGRAM_BOT_TOKEN= ga yozing va skriptni qayta ishga tushiring."
+fi

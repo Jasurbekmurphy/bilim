@@ -30,7 +30,7 @@
 {% for r in resources %}
   <a class="tile" href="{{ url_for('resource', rid=r.id) }}">
     <div class="thumb">
-      {% if r.preview_name %}<img loading="lazy" src="{{ url_for('preview', rid=r.id) }}" alt="">{% else %}<span class="ext">{{ r.ext|upper }}</span>{% endif %}
+      {% if r.preview_name %}<img loading="lazy" src="{{ url_for('preview', rid=r.id) }}" alt="" onload="if (this.naturalWidth > this.naturalHeight) this.classList.add('wide')">{% else %}<span class="ext">{{ r.ext|upper }}</span>{% endif %}
       <span class="badge">{{ r.ext|upper }}</span>
     </div>
     <div class="tile-body">
