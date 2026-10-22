@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ user.full_name }} <span class="muted">({{ user.username }}, {{ ROLE_NAMES[user.role] }})</span></h1>
+<p><a href="{{ url_for('admin_stats') }}">← Statistika</a> · <a href="{{ url_for('index', teacher=user.id) }}">Resurslari</a></p>
+<table>
+  <tr><th>Kirgan vaqti</th><th>Oxirgi harakat</th><th>Chiqqan</th><th>Davomiylik</th><th>IP</th></tr>
+  {% for s in sessions %}
+  <tr><td>{{ s.login_at }}</td><td>{{ s.last_seen }}</td><td>{{ s.logout_at or '—' }}</td><td>{{ s.seconds|duration }}</td><td>{{ s.ip or '' }}</td></tr>
+  {% else %}<tr><td colspan="5" class="muted">Hali kirmagan.</td></tr>{% endfor %}
+</table>
+{% endblock %}

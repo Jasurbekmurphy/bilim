@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_stars.html" import stars %}
+{% block content %}
+<h1>O'qituvchilar reytingi</h1>
+<p class="muted">Har bir resurs balli = o'rtacha baho × {{ formula[0] }} + like × {{ formula[1] }} + hisobga o'tgan izoh × {{ formula[2] }}. O'qituvchi reytingi barcha resurslari ballining yig'indisi.</p>
+<table>
+  <tr><th>#</th><th>O'qituvchi</th><th>Kafedra</th><th>Resurslar</th><th>O'rtacha baho</th><th>Like</th><th>Yuklab olishlar</th><th>Reyting</th></tr>
+  {% for t in rows %}
+  <tr>
+    <td>{{ loop.index }}</td>
+    <td><a href="{{ url_for('index', teacher=t.id) }}">{{ t.full_name }}</a></td>
+    <td>{{ t.department_name or '—' }}</td>
+    <td>{{ t.resource_count }}</td>
+    <td>{{ '★ %.1f'|format(t.avg_rating) if t.avg_rating else '—' }}</td>
+    <td>{{ t.likes }}</td>
+    <td>{{ t.downloads }}</td>
+    <td><strong>{{ '%.1f'|format(t.total_score) }}</strong></td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

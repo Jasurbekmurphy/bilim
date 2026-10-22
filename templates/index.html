@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% from "_stars.html" import stars %}
+{% block content %}
+<form class="filters" method="get">
+  {% if request.args.saved %}<input type="hidden" name="saved" value="1">{% endif %}
+  <input name="q" placeholder="Qidirish…" value="{{ request.args.q or '' }}">
+  <select name="department" id="f-dep" onchange="filterSpecs()">
+    <option value="">Barcha kafedralar</option>
+    {% for d in departments %}<option value="{{ d.id }}" {{ 'selected' if request.args.department == d.id|string }}>{{ d.name }}</option>{% endfor %}
+  </select>
+  <select name="specialty" id="f-spec">
+    <option value="">Barcha mutaxassisliklar</option>
+    {% for s in specialties %}<option value="{{ s.id }}" data-dep="{{ s.department_id }}" {{ 'selected' if request.args.specialty == s.id|string }}>{{ s.name }}</option>{% endfor %}
+  </select>
+  <select name="teacher">
+    <option value="">Barcha o'qituvchilar</option>
+    {% for t in teachers %}<option value="{{ t.id }}" {{ 'selected' if request.args.teacher == t.id|string }}>{{ t.full_name }}</option>{% endfor %}
+  </select>
+  <select name="sort">
+    <option value="new">Eng yangi</option>
+    <option value="top" {{ 'selected' if request.args.sort == 'top' }}>Eng yuqori reyting</option>
+    <option value="popular" {{ 'selected' if request.args.sort == 'popular' }}>Eng ko'p ko'rilgan</option>
+  </select>
+  <button class="btn">Saralash</button>
+  <a href="{{ url_for('index') }}" class="muted">Tozalash</a>
+</form>
+<h1>{{ 'Saqlangan resurslar' if request.args.saved else 'Resurslar' }} <span class="muted">({{ resources|length }})</span></h1>
+{% if not resources %}<p class="muted">Hozircha bu yerda resurs yo'q.</p>{% endif %}
+<div class="grid">
+{% for r in resources %}
+  <a class="tile" href="{{ url_for('resource', rid=r.id) }}">
+    <div class="thumb">
+      {% if r.preview_name %}<img loading="lazy" src="{{ url_for('preview', rid=r.id) }}" alt="">{% else %}<span class="ext">{{ r.ext|upper }}</span>{% endif %}
+      <span class="badge">{{ r.ext|upper }}</span>
+    </div>
+    <div class="tile-body">
+      <strong>{{ r.title }}</strong>
+      <div class="muted small">{{ r.teacher_name }}</div>
+      <div class="muted small">{{ r.department_name }}{% if r.specialty_name %} · {{ r.specialty_name }}{% endif %}</div>
+      <div class="small">{{ stars(r.avg_rating, r.rating_count) }}</div>
+      <div class="muted small">❤ {{ r.like_count }} · 💬 {{ r.comment_count }} · 👁 {{ r.views }} · ⬇ {{ r.downloads }}</div>
+    </div>
+  </a>
+{% endfor %}
+</div>
+<script>
+function filterSpecs() {
+  const dep = document.getElementById('f-dep').value;
+  for (const o of document.getElementById('f-spec').options) {
+    if (o.dataset.dep) o.hidden = dep && o.dataset.dep !== dep;
+  }
+}
+filterSpecs();
+</script>
+{% endblock %}

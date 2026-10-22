@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Statistika</h1>
+<form method="get" class="filters">
+  <select name="days" onchange="this.form.submit()">
+    {% for d, l in [(1, 'Bugun'), (7, '7 kun'), (30, '30 kun'), (90, '90 kun'), (0, 'Hammasi')] %}<option value="{{ d }}" {{ 'selected' if days == d }}>{{ l }}</option>{% endfor %}
+  </select>
+  <select name="role" onchange="this.form.submit()">
+    <option value="">Hamma</option>
+    <option value="teacher" {{ 'selected' if request.args.role == 'teacher' }}>O'qituvchilar</option>
+    <option value="student" {{ 'selected' if request.args.role == 'student' }}>O'quvchilar</option>
+  </select>
+</form>
+<div class="kpis">
+  <div class="kpi"><b>{{ totals.logins }}</b><span>kirishlar</span></div>
+  <div class="kpi"><b>{{ totals.active_users }}</b><span>faol foydalanuvchi</span></div>
+  <div class="kpi"><b>{{ online|length }}</b><span>hozir saytda</span></div>
+  <div class="kpi"><b>{{ totals.resources }}</b><span>resurs</span></div>
+  <div class="kpi"><b>{{ totals.downloads }}</b><span>yuklab olish</span></div>
+  <div class="kpi"><b>{{ totals.teachers }} / {{ totals.students }}</b><span>o'qituvchi / o'quvchi</span></div>
+</div>
+{% if online %}<p class="muted small">Hozir saytda: {{ online|map(attribute='full_name')|join(', ') }}</p>{% endif %}
+{% if daily %}
+{% set mx = daily|map(attribute='n')|max %}
+<h2>Kunlik kirishlar</h2>
+<div class="bars">
+  {% for d in daily %}<div class="bar" style="height: {{ (d.n / mx * 100)|round }}%" title="{{ d.day }}: {{ d.n }} kirish, {{ d.u }} foydalanuvchi"></div>{% endfor %}
+</div>
+<div class="muted small bars-axis"><span>{{ daily[0].day }}</span><span>{{ daily[-1].day }}</span></div>
+{% endif %}
+<h2>Foydalanuvchilar bo'yicha</h2>
+<p class="muted small">Davomiylik: kirgan paytdan oxirgi harakatgacha. {{ 30 }} daqiqa harakatsiz qolinsa, keyingi kirish yangi sessiya hisoblanadi.</p>
+<table>
+  <tr><th>F.I.Sh.</th><th>Rol</th><th>Kirishlar soni</th><th>Oxirgi kirish</th><th>Jami vaqt</th><th>O'rtacha sessiya</th></tr>
+  {% for x in users %}
+  <tr>
+    <td><a href="{{ url_for('admin_user_sessions', uid=x.id) }}">{{ x.full_name }}</a> <span class="muted small">{{ x.username }}{% if x.group_name %} · {{ x.group_name }}{% endif %}</span></td>
+    <td>{{ ROLE_NAMES[x.role] }}</td>
+    <td>{{ x.login_count }}</td>
+    <td>{{ x.last_login[:16] if x.last_login else 'Hech qachon' }}</td>
+    <td>{{ x.total_seconds|duration }}</td>
+    <td>{{ (x.total_seconds / x.login_count if x.login_count else 0)|duration }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

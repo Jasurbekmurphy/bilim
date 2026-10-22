@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Import natijasi</h1>
+<p>{{ created|length }} ta foydalanuvchi yaratildi. Parollarni hozir chop eting yoki nusxa oling: ular boshqa ko'rsatilmaydi.</p>
+<table>
+  <tr><th>Login</th><th>F.I.Sh.</th><th>Parol</th></tr>
+  {% for u, n, p in created %}<tr><td>{{ u }}</td><td>{{ n }}</td><td><code>{{ p }}</code></td></tr>{% endfor %}
+</table>
+<p><button class="btn ghost" onclick="print()">Chop etish</button> <a href="{{ url_for('admin_users') }}">Orqaga</a></p>
+{% endblock %}

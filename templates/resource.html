@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% from "_stars.html" import stars %}
+{% macro post(action, label, cls='btn ghost') -%}
+<form method="post" action="{{ url_for('resource_action', rid=r.id, action=action) }}" class="inline">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="{{ cls }}">{{ label }}</button>
+</form>
+{%- endmacro %}
+{% block content %}
+{% set u = current_user() %}
+<div class="resource">
+  <div class="preview-col">
+    {% if r.preview_name %}<img class="big-preview" src="{{ url_for('preview', rid=r.id) }}" alt="Birinchi bet">
+    {% else %}<div class="thumb big"><span class="ext">{{ r.ext|upper }}</span></div>{% endif %}
+    <div class="row">
+      {% if r.ext == 'pdf' or r.pdf_name or r.ext in ('jpg','jpeg','png') %}
+        <a class="btn ghost" target="_blank" href="{{ url_for('view_file', rid=r.id) }}">To'liq ko'rish</a>
+      {% endif %}
+      <a class="btn" href="{{ url_for('download', rid=r.id) }}">Yuklab olish ({{ r.ext|upper }})</a>
+    </div>
+  </div>
+  <div class="info-col">
+    {% if r.hidden %}<div class="flash warning">Bu resurs administrator tomonidan yashirilgan.</div>{% endif %}
+    <h1>{{ r.title }}</h1>
+    <p class="muted">
+      <a href="{{ url_for('index', teacher=r.teacher_id) }}">{{ r.teacher_name }}</a> ·
+      <a href="{{ url_for('index', department=r.department_id) }}">{{ r.department_name }}</a>
+      {% if r.specialty_name %} · <a href="{{ url_for('index', specialty=r.specialty_id) }}">{{ r.specialty_name }}</a>{% endif %}
+      · {{ r.created_at[:10] }}
+    </p>
+    {% if r.description %}<p>{{ r.description }}</p>{% endif %}
+    <p>{{ stars(r.avg_rating, r.rating_count) }} · ❤ {{ r.like_count }} · 👁 {{ r.views }} · ⬇ {{ r.downloads }} · Reyting balli: <strong>{{ '%.1f'|format(r.score) }}</strong></p>
+
+    {% if u.id != r.teacher_id %}
+    <form method="post" action="{{ url_for('resource_action', rid=r.id, action='baho') }}" class="rate">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <span>Bahoyingiz:</span>
+      {% for i in range(1, 6) %}<button name="value" value="{{ i }}" class="star {{ 'on' if mine.rating >= i }}" title="{{ i }}">★</button>{% endfor %}
+    </form>
+    {% endif %}
+    <div class="row">
+      {% if u.id != r.teacher_id %}{{ post('like', '❤ Yoqdi' if not mine.liked else '💔 Like ni olish', 'btn' if not mine.liked else 'btn ghost') }}{% endif %}
+      {{ post('saqlash', '☆ Saqlash' if not mine.saved else '★ Saqlangan') }}
+      {% if can_edit(r) %}
+        <a class="btn ghost" href="{{ url_for('edit_resource', rid=r.id) }}">Tahrirlash</a>
+        <form method="post" action="{{ url_for('delete_resource', rid=r.id) }}" class="inline" onsubmit="return confirm('Resurs o\'chirilsinmi?')">
+          <input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn danger">O'chirish</button>
+        </form>
+      {% endif %}
+      {% if u.role == 'admin' %}
+        <form method="post" action="{{ url_for('toggle_hidden', rid=r.id) }}" class="inline">
+          <input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="btn ghost">{{ 'Ko\'rsatish' if r.hidden else 'Yashirish' }}</button>
+        </form>
+      {% endif %}
+    </div>
+
+    <h2 id="izohlar">Izohlar ({{ comments|length }})</h2>
+    <form method="post" action="{{ url_for('resource_action', rid=r.id, action='izoh') }}">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <textarea name="text" rows="3" required maxlength="2000" placeholder="Fikringizni yozing…"></textarea>
+      <button class="btn">Yuborish</button>
+    </form>
+    <p class="muted small">Har bir akkauntning faqat birinchi izohi reytingga ta'sir qiladi, keyingilari oddiy izoh sifatida qoladi.</p>
+    {% for c in comments %}
+      <div class="comment">
+        <div><strong>{{ c.full_name }}</strong> <span class="muted small">{{ ROLE_NAMES[c.role] }} · {{ c.created_at[:16] }}</span>
+          {% if c.counted %}<span class="pill" title="Reytingga hisoblangan">+ reyting</span>{% endif %}
+          {% if u.role == 'admin' or u.id == c.user_id %}
+          <form method="post" action="{{ url_for('delete_comment', cid=c.id) }}" class="inline">
+            <input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="link small">o'chirish</button>
+          </form>
+          {% endif %}
+        </div>
+        <div class="comment-text">{{ c.text }}</div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

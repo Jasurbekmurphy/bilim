@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h1>{{ 'Resursni tahrirlash' if resource else 'Yangi resurs yuklash' }}</h1>
+  <form method="post" enctype="multipart/form-data" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').textContent='Yuklanmoqda…'">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    {% if not resource %}
+    <label>Fayl (PDF, PowerPoint, Word, Excel, rasm)
+      <input type="file" name="file" required accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.odp,.odt,.ods,.rtf,.txt,.jpg,.jpeg,.png">
+    </label>
+    {% endif %}
+    <label>Sarlavha <input name="title" required value="{{ resource.title if resource else '' }}"></label>
+    <label>Qisqacha tavsif <textarea name="description" rows="3">{{ resource.description if resource else '' }}</textarea></label>
+    <label>Kafedra
+      <select name="department" id="dep" required onchange="filterSpecs()">
+        <option value="">— tanlang —</option>
+        {% for d in departments %}<option value="{{ d.id }}" {{ 'selected' if resource and resource.department_id == d.id }}>{{ d.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Mutaxassislik
+      <select name="specialty" id="spec">
+        <option value="">— tanlang —</option>
+        {% for s in specialties %}<option value="{{ s.id }}" data-dep="{{ s.department_id }}" {{ 'selected' if resource and resource.specialty_id == s.id }}>{{ s.name }}{% if not s.approved %} (tasdiqlanmagan){% endif %}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Ro'yxatda yo'qmi? O'zingiz yozing
+      <input name="new_specialty" placeholder="Masalan: Avtomobillarga texnik xizmat ko'rsatish">
+    </label>
+    <p class="muted small">Siz yozgan mutaxassislik darhol ishlatiladi, administrator uni keyin tasdiqlaydi.</p>
+    <button class="btn">{{ 'Saqlash' if resource else 'Joylash' }}</button>
+  </form>
+</div>
+<script>
+function filterSpecs() {
+  const dep = document.getElementById('dep').value, sel = document.getElementById('spec');
+  for (const o of sel.options) {
+    if (!o.dataset.dep) continue;
+    o.hidden = o.dataset.dep !== dep;
+    if (o.hidden && o.selected) sel.value = '';
+  }
+}
+filterSpecs();
+</script>
+{% endblock %}
