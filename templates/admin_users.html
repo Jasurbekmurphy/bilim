@@ -36,13 +36,14 @@
   <a href="{{ url_for('admin_users', role='admin') }}">Adminlar</a>
 </p>
 <table>
-  <tr><th>F.I.Sh.</th><th>Login</th><th>Rol</th><th>Kafedra / guruh</th><th>Holat</th><th></th></tr>
+  <tr><th>F.I.Sh.</th><th>Login</th><th>Rol</th><th>Kafedra / guruh</th><th>Telegram</th><th>Holat</th><th></th></tr>
   {% for x in users %}
   <tr class="{{ '' if x.is_active else 'dim' }}">
     <td><a href="{{ url_for('admin_user_sessions', uid=x.id) }}">{{ x.full_name }}</a></td>
     <td>{{ x.username }}</td>
     <td>{{ ROLE_NAMES[x.role] }}</td>
     <td>{{ x.department_name or '' }}{% if x.group_name %} · {{ x.group_name }}{% endif %}</td>
+    <td>{% if x.telegram_chat_id %}<span class="pill ok">ulangan</span>{% else %}<span class="muted">—</span>{% endif %}</td>
     <td>{{ 'Faol' if x.is_active else 'Bloklangan' }}</td>
     <td class="actions">
       {% for action, label in [('parol', 'Yangi parol'), ('bloklash', 'Faollashtirish' if not x.is_active else 'Bloklash'), ('ochirish', "O'chirish")] %}

@@ -3,34 +3,60 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}Texnikum bilimlar manbai{% endblock %}</title>
+<title>{% block title %}Bilimlar manbai{% endblock %}</title>
+<meta name="description" content="Texnikum pedagoglarining o'quv resurslari platformasi">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
 </head>
 <body>
+<div class="bg-orbs"><span></span><span></span><span></span></div>
 {% set u = current_user() %}
+{% macro navlink(endpoint, label) -%}
+  <a href="{{ url_for(endpoint, **kwargs) }}" class="{{ 'active' if request.endpoint == endpoint and not request.args.saved and not request.args.teacher }}">{{ label }}</a>
+{%- endmacro %}
 <header class="topbar">
-  <a class="brand" href="{{ url_for('index') }}">📚 Bilimlar manbai</a>
+  <a class="brand" href="{{ url_for('index') if u else url_for('landing') }}"><span class="logo">📚</span>Bilimlar manbai</a>
+  <input type="checkbox" id="nav-toggle" class="nav-toggle">
+  <label for="nav-toggle" class="burger" aria-label="Menyu">☰</label>
   {% if u %}
   <nav>
-    <a href="{{ url_for('index') }}">Resurslar</a>
-    <a href="{{ url_for('index', saved=1) }}">Saqlanganlar</a>
-    <a href="{{ url_for('teacher_rating') }}">O'qituvchilar reytingi</a>
+    {{ navlink('index', 'Resurslar') }}
+    <a href="{{ url_for('index', saved=1) }}" class="{{ 'active' if request.args.saved }}">Saqlanganlar</a>
+    {{ navlink('teacher_rating', 'Reyting') }}
     {% if u.role in ('teacher', 'admin') %}
-      <a href="{{ url_for('my_resources') }}">Mening resurslarim</a>
-      <a class="btn small" href="{{ url_for('upload') }}">+ Yuklash</a>
+      <a href="{{ url_for('my_resources') }}" class="{{ 'active' if request.args.teacher == u.id|string }}">Mening resurslarim</a>
     {% endif %}
     {% if u.role == 'admin' %}
-      <a href="{{ url_for('admin_users') }}">Foydalanuvchilar</a>
-      <a href="{{ url_for('admin_departments') }}">Kafedralar</a>
-      <a href="{{ url_for('admin_stats') }}">Statistika</a>
+      {{ navlink('admin_users', 'Foydalanuvchilar') }}
+      {{ navlink('admin_departments', 'Kafedralar') }}
+      {{ navlink('admin_stats', 'Statistika') }}
     {% endif %}
   </nav>
   <div class="me">
-    <a href="{{ url_for('change_password') }}" title="Parolni o'zgartirish">{{ u.full_name }} · {{ ROLE_NAMES[u.role] }}</a>
+    {% if u.role in ('teacher', 'admin') %}<a class="btn small" href="{{ url_for('upload') }}">＋ Yuklash</a>{% endif %}
+    <a class="avatar-pill" href="{{ url_for('profile') }}" title="Profil">
+      <span class="avatar">{{ u.full_name[:1]|upper }}</span>
+      <span>{{ u.full_name.split()[0] }}<small>{{ ROLE_NAMES[u.role] }}</small></span>
+    </a>
     <form method="post" action="{{ url_for('logout') }}" class="inline">
       <input type="hidden" name="csrf" value="{{ csrf_token() }}">
-      <button class="link">Chiqish</button>
+      <button class="btn ghost small" title="Chiqish">Chiqish</button>
     </form>
+  </div>
+  {% else %}
+  <nav>
+    {% if request.endpoint == 'landing' %}
+    <a href="#imkoniyatlar">Imkoniyatlar</a>
+    <a href="#faktlar">Qiziqarli faktlar</a>
+    <a href="#kafedralar">Kafedralar</a>
+    {% endif %}
+  </nav>
+  <div class="me">
+    <a class="btn ghost small" href="{{ url_for('login') }}">Kirish</a>
+    {% if allow_registration %}<a class="btn small" href="{{ url_for('register') }}">Ro'yxatdan o'tish</a>{% endif %}
   </div>
   {% endif %}
 </header>
@@ -40,5 +66,6 @@
   {% endfor %}
   {% block content %}{% endblock %}
 </main>
+{% block footer %}{% endblock %}
 </body>
 </html>

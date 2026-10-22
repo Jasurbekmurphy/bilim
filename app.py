@@ -2,6 +2,7 @@
 import csv
 import io
 import os
+import re
 import secrets
 import shutil
 import sqlite3
@@ -14,6 +15,8 @@ from functools import wraps
 from flask import (Flask, abort, flash, g, redirect, render_template, request,
                    send_from_directory, session, url_for)
 from werkzeug.security import check_password_hash, generate_password_hash
+
+import telegram
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get("DATA_DIR", BASE_DIR)
@@ -33,6 +36,12 @@ SCORE_COMMENT = 0.5
 # Shu vaqtdan ko'p harakatsiz qolsa, sessiya tugagan deb hisoblanadi
 IDLE_TIMEOUT = timedelta(minutes=30)
 ROLE_NAMES = {"admin": "Administrator", "teacher": "O'qituvchi", "student": "O'quvchi"}
+# O'quvchilar o'zi ro'yxatdan o'tadi; o'qituvchilarga login/parolni admin beradi
+ALLOW_REGISTRATION = os.environ.get("ALLOW_REGISTRATION", "1") != "0"
+USERNAME_RE = re.compile(r"^[A-Za-z0-9_.]{3,30}$")
+RESET_CODE_TTL = timedelta(minutes=10)
+RESET_MAX_ATTEMPTS = 5
+TELEGRAM_LINK_TTL = timedelta(minutes=30)
 
 
 
@@ -51,6 +60,8 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY") or load_secret_key()
 app.config["MAX_CONTENT_LENGTH"] = int(os.environ.get("MAX_UPLOAD_MB", "100")) * 1024 * 1024
 app.jinja_env.globals["ROLE_NAMES"] = ROLE_NAMES
+app.jinja_env.globals["allow_registration"] = ALLOW_REGISTRATION
+app.jinja_env.globals["now_year"] = lambda: datetime.now().year
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS departments (
@@ -125,6 +136,14 @@ CREATE TABLE IF NOT EXISTS login_sessions (
     logout_at TEXT,
     ip TEXT
 );
+CREATE TABLE IF NOT EXISTS password_resets (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    code_hash TEXT NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_res_dep ON resources(department_id, specialty_id);
 CREATE INDEX IF NOT EXISTS idx_res_teacher ON resources(teacher_id);
 CREATE INDEX IF NOT EXISTS idx_sess_user ON login_sessions(user_id);
@@ -175,11 +194,24 @@ def close_db(_exc):
         db.close()
 
 
+def migrate(db):
+    """Eski bazaga yangi ustunlarni qo'shadi; mavjud ma'lumotlar saqlanadi."""
+    cols = {row[1] for row in db.execute("PRAGMA table_info(users)")}
+    for name, decl in (("telegram_chat_id", "INTEGER"), ("telegram_link_token", "TEXT"),
+                       ("telegram_link_expires", "TEXT")):
+        if name not in cols:
+            try:
+                db.execute(f"ALTER TABLE users ADD COLUMN {name} {decl}")
+            except sqlite3.OperationalError:
+                pass  # boshqa worker allaqachon qo'shgan
+
+
 def init_db():
     for d in (UPLOAD_DIR, PREVIEW_DIR):
         os.makedirs(d, exist_ok=True)
     db = sqlite3.connect(DB_PATH)
     db.executescript(SCHEMA)
+    migrate(db)
     if not db.execute("SELECT 1 FROM users WHERE role = 'admin'").fetchone():
         password = os.environ.get("ADMIN_PASSWORD", "admin123")
         # OR IGNORE: bir nechta gunicorn worker bir vaqtda ishga tushganda xato bermasligi uchun
@@ -269,6 +301,18 @@ def client_ip():
     return request.headers.get("X-Forwarded-For", request.remote_addr or "").split(",")[0].strip()
 
 
+def start_session(user_id):
+    session.clear()
+    session["user_id"] = user_id
+    session.permanent = True
+    t = now_str()
+    db = get_db()
+    cur = db.execute("INSERT INTO login_sessions (user_id, login_at, last_seen, ip) VALUES (?, ?, ?, ?)",
+                     (user_id, t, t, client_ip()))
+    db.commit()
+    session["login_session_id"] = cur.lastrowid
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if current_user():
@@ -278,15 +322,7 @@ def login():
         user = db.execute("SELECT * FROM users WHERE username = ?",
                           (request.form.get("username", "").strip(),)).fetchone()
         if user and user["is_active"] and check_password_hash(user["password_hash"], request.form.get("password", "")):
-            session.clear()
-            session["user_id"] = user["id"]
-            session.permanent = True
-            t = now_str()
-            cur = db.execute(
-                "INSERT INTO login_sessions (user_id, login_at, last_seen, ip) VALUES (?, ?, ?, ?)",
-                (user["id"], t, t, client_ip()))
-            db.commit()
-            session["login_session_id"] = cur.lastrowid
+            start_session(user["id"])
             nxt = request.args.get("next", "")
             return redirect(nxt if nxt.startswith("/") and not nxt.startswith("//") else url_for("index"))
         flash("Login yoki parol noto'g'ri, yoki akkaunt bloklangan.", "error")
@@ -303,7 +339,7 @@ def logout():
                    (t, t, sid))
         db.commit()
     session.clear()
-    return redirect(url_for("login"))
+    return redirect(url_for("landing"))
 
 
 @app.route("/parol", methods=["GET", "POST"])
@@ -328,6 +364,170 @@ def change_password():
     return render_template("change_password.html")
 
 
+@app.route("/royxatdan-otish", methods=["GET", "POST"])
+def register():
+    if not ALLOW_REGISTRATION:
+        abort(404)
+    if current_user():
+        return redirect(url_for("index"))
+    form = request.form
+    if request.method == "POST":
+        db = get_db()
+        username = form.get("username", "").strip()
+        full_name = " ".join(form.get("full_name", "").split())
+        password = form.get("password", "")
+        dep = form.get("department") or None
+        if len(full_name) < 5:
+            flash("Familiya va ismingizni to'liq yozing.", "error")
+        elif not USERNAME_RE.match(username):
+            flash("Login 3–30 belgi bo'lsin: lotin harflari, raqamlar, nuqta yoki pastki chiziq.", "error")
+        elif db.execute("SELECT 1 FROM users WHERE username = ? COLLATE NOCASE", (username,)).fetchone():
+            flash(f"'{username}' logini band, boshqasini tanlang.", "error")
+        elif len(password) < 6:
+            flash("Parol kamida 6 belgidan iborat bo'lsin.", "error")
+        elif password != form.get("password2", ""):
+            flash("Parollar mos kelmadi.", "error")
+        elif dep and not db.execute("SELECT 1 FROM departments WHERE id = ?", (dep,)).fetchone():
+            flash("Kafedra topilmadi.", "error")
+        else:
+            cur = db.execute(
+                "INSERT INTO users (username, password_hash, full_name, role, department_id, group_name, created_at)"
+                " VALUES (?, ?, ?, 'student', ?, ?, ?)",
+                (username, generate_password_hash(password), full_name, dep,
+                 form.get("group_name", "").strip()[:30] or None, now_str()))
+            db.commit()
+            start_session(cur.lastrowid)
+            flash("Xush kelibsiz! Parolni unutib qo'ysangiz tiklay olishingiz uchun Telegramni ulab qo'ying.",
+                  "success")
+            return redirect(url_for("profile"))
+    return render_template("register.html", departments=departments(), form=form)
+
+
+@app.route("/profil")
+@login_required()
+def profile():
+    user = current_user()
+    dep = get_db().execute("SELECT name FROM departments WHERE id = ?", (user["department_id"],)).fetchone()
+    return render_template("profile.html", user=user, department=dep["name"] if dep else None,
+                           telegram_enabled=telegram.enabled())
+
+
+@app.route("/profil/telegram", methods=["POST"])
+@login_required()
+def telegram_link():
+    bot = telegram.bot_username()
+    if not bot:
+        flash("Telegram bot hozircha sozlanmagan. Administratorga murojaat qiling.", "error")
+        return redirect(url_for("profile"))
+    token = secrets.token_urlsafe(16)
+    db = get_db()
+    db.execute("UPDATE users SET telegram_link_token = ?, telegram_link_expires = ? WHERE id = ?",
+               (token, (now() + TELEGRAM_LINK_TTL).isoformat(sep=" "), current_user()["id"]))
+    db.commit()
+    return redirect(f"https://t.me/{bot}?start={token}")
+
+
+@app.route("/profil/telegram/uzish", methods=["POST"])
+@login_required()
+def telegram_unlink():
+    db = get_db()
+    db.execute("UPDATE users SET telegram_chat_id = NULL WHERE id = ?", (current_user()["id"],))
+    db.commit()
+    flash("Telegram uzildi.", "success")
+    return redirect(url_for("profile"))
+
+
+def link_telegram(token, chat_id):
+    """Botga /start <token> kelganda chaqiriladi. Ulangan foydalanuvchi ismini qaytaradi."""
+    db = sqlite3.connect(DB_PATH)
+    try:
+        row = db.execute("SELECT id, full_name, telegram_link_expires FROM users"
+                         " WHERE telegram_link_token = ? AND is_active = 1", (token,)).fetchone()
+        if not row or parse_dt(row[2]) < now():
+            return None
+        # Bitta Telegram bitta akkauntga ulanadi
+        db.execute("UPDATE users SET telegram_chat_id = NULL WHERE telegram_chat_id = ?", (chat_id,))
+        db.execute("UPDATE users SET telegram_chat_id = ?, telegram_link_token = NULL,"
+                   " telegram_link_expires = NULL WHERE id = ?", (chat_id, row[0]))
+        db.commit()
+        return row[1]
+    finally:
+        db.close()
+
+
+@app.route("/parolni-tiklash", methods=["GET", "POST"])
+def forgot_password():
+    if request.method == "POST":
+        db = get_db()
+        user = db.execute("SELECT * FROM users WHERE username = ? COLLATE NOCASE AND is_active = 1",
+                          (request.form.get("username", "").strip(),)).fetchone()
+        if not user:
+            flash("Bunday login topilmadi.", "error")
+        elif not (user["telegram_chat_id"] and telegram.enabled()):
+            flash("Bu akkaunt Telegramga ulanmagan. Parolni tiklash uchun administratorga murojaat qiling.",
+                  "warning")
+        else:
+            last = db.execute("SELECT created_at FROM password_resets WHERE user_id = ?"
+                              " ORDER BY id DESC LIMIT 1", (user["id"],)).fetchone()
+            if last and now() - parse_dt(last["created_at"]) < timedelta(minutes=1):
+                flash("Kod yaqinda yuborildi. Telegramni tekshiring yoki bir daqiqadan keyin qayta urining.",
+                      "warning")
+                session["reset_user_id"] = user["id"]
+                return redirect(url_for("reset_password"))
+            code = f"{secrets.randbelow(10 ** 6):06d}"
+            try:
+                telegram.send_message(user["telegram_chat_id"],
+                                      f"🔐 Parolni tiklash kodi: <b>{code}</b>\n\n"
+                                      f"Kod {int(RESET_CODE_TTL.total_seconds() // 60)} daqiqa amal qiladi. "
+                                      "Agar buni siz so'ramagan bo'lsangiz, xabarga e'tibor bermang.")
+            except Exception as exc:
+                app.logger.warning("Telegram xabari yuborilmadi: %s", exc)
+                flash("Telegramga xabar yuborib bo'lmadi. Keyinroq urining yoki administratorga murojaat qiling.",
+                      "error")
+                return render_template("forgot_password.html")
+            db.execute("DELETE FROM password_resets WHERE user_id = ?", (user["id"],))
+            db.execute("INSERT INTO password_resets (user_id, code_hash, created_at, expires_at) VALUES (?, ?, ?, ?)",
+                       (user["id"], generate_password_hash(code), now_str(),
+                        (now() + RESET_CODE_TTL).isoformat(sep=" ")))
+            db.commit()
+            session["reset_user_id"] = user["id"]
+            flash("Tasdiqlash kodi Telegramingizga yuborildi.", "success")
+            return redirect(url_for("reset_password"))
+    return render_template("forgot_password.html")
+
+
+@app.route("/parolni-tiklash/kod", methods=["GET", "POST"])
+def reset_password():
+    uid = session.get("reset_user_id")
+    if not uid:
+        return redirect(url_for("forgot_password"))
+    if request.method == "POST":
+        db = get_db()
+        row = db.execute("SELECT * FROM password_resets WHERE user_id = ? ORDER BY id DESC LIMIT 1",
+                         (uid,)).fetchone()
+        new = request.form.get("new", "")
+        if not row or parse_dt(row["expires_at"]) < now() or row["attempts"] >= RESET_MAX_ATTEMPTS:
+            flash("Kod eskirgan yoki urinishlar tugagan. Yangi kod so'rang.", "error")
+            return redirect(url_for("forgot_password"))
+        if not check_password_hash(row["code_hash"], request.form.get("code", "").strip()):
+            db.execute("UPDATE password_resets SET attempts = attempts + 1 WHERE id = ?", (row["id"],))
+            db.commit()
+            flash("Kod noto'g'ri.", "error")
+        elif len(new) < 6:
+            flash("Yangi parol kamida 6 belgidan iborat bo'lsin.", "error")
+        elif new != request.form.get("new2", ""):
+            flash("Yangi parollar mos kelmadi.", "error")
+        else:
+            db.execute("UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?",
+                       (generate_password_hash(new), uid))
+            db.execute("DELETE FROM password_resets WHERE user_id = ?", (uid,))
+            db.commit()
+            session.pop("reset_user_id", None)
+            flash("Parol yangilandi. Yangi parol bilan kiring.", "success")
+            return redirect(url_for("login"))
+    return render_template("reset_password.html")
+
+
 # ---------------------------------------------------------------- resources
 
 def departments():
@@ -350,6 +550,24 @@ def teachers():
 
 
 @app.route("/")
+def landing():
+    if current_user():
+        return redirect(url_for("index"))
+    db = get_db()
+    stats = db.execute(
+        """SELECT (SELECT COUNT(*) FROM resources WHERE hidden = 0) AS resources,
+                  (SELECT COUNT(*) FROM users WHERE role = 'teacher' AND is_active = 1) AS teachers,
+                  (SELECT COUNT(*) FROM users WHERE role = 'student' AND is_active = 1) AS students,
+                  (SELECT COUNT(*) FROM departments) AS departments,
+                  (SELECT COALESCE(SUM(downloads), 0) FROM resources) AS downloads""").fetchone()
+    deps = db.execute(
+        "SELECT d.name, (SELECT COUNT(*) FROM resources r WHERE r.department_id = d.id AND r.hidden = 0) AS n,"
+        " (SELECT COUNT(*) FROM specialties s WHERE s.department_id = d.id AND s.approved = 1) AS specs"
+        " FROM departments d ORDER BY n DESC, d.name LIMIT 8").fetchall()
+    return render_template("landing.html", stats=stats, deps=deps)
+
+
+@app.route("/resurslar")
 @login_required()
 def index():
     args = request.args

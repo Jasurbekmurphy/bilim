@@ -17,6 +17,8 @@ Texnikum pedagoglari tayyorlagan resurslar (prezentatsiya, ma'ruza matni, test v
 - O'z resurslarini tahrirlaydi va o'chiradi.
 
 **O'quvchi**
+- Bosh sahifadan o'zi ro'yxatdan o'tadi (o'qituvchilarga login/parolni admin beradi).
+- Profilda Telegramni ulaydi: parolni unutsa, tiklash kodi Telegram botga keladi.
 - Kafedra, mutaxassislik, o'qituvchi bo'yicha saralaydi, nom bo'yicha qidiradi; eng yangi / eng yuqori reyting / eng ko'p ko'rilgan tartibida ko'radi.
 - 1–5 baho qo'yadi, like bosadi, izoh yozadi, resursni "Saqlanganlar"ga qo'shadi, yuklab oladi.
 
@@ -70,6 +72,14 @@ Login `admin`, parol `ADMIN_PASSWORD` (berilmagan bo'lsa `admin123`). Birinchi k
 
 Excel'dan import uchun ustunlar tartibi: `login, F.I.Sh., rol, kafedra, guruh, parol` (oxirgi uchtasi ixtiyoriy).
 
+### Telegram bot (parolni tiklash)
+
+1. Telegramda [@BotFather](https://t.me/BotFather) ga `/newbot` yozing, botga nom bering (masalan `bilimbase_bot`) va bergan tokenni nusxalang.
+2. Serverda `/opt/bilim/.env` faylida `TELEGRAM_BOT_TOKEN=` qatoriga tokenni yozing.
+3. `bash /opt/bilim/deploy/install.sh` ni qayta ishga tushiring.
+
+Shundan keyin foydalanuvchilar **Profil → Telegramni ulash** tugmasi orqali akkauntini botga ulaydi. Parolni unutsa, kirish sahifasidagi "Parolni unutdingizmi?" orqali 6 xonali kod Telegramga keladi (10 daqiqa amal qiladi, 5 ta urinish).
+
 ## Sozlamalar (muhit o'zgaruvchilari)
 
 | O'zgaruvchi | Ma'nosi | Standart |
@@ -78,6 +88,8 @@ Excel'dan import uchun ustunlar tartibi: `login, F.I.Sh., rol, kafedra, guruh, p
 | `ADMIN_PASSWORD` | Birinchi admin paroli | `admin123` |
 | `MAX_UPLOAD_MB` | Fayl hajmi chegarasi | `100` |
 | `SECRET_KEY` | Sessiya kaliti | avtomatik yaratiladi |
+| `TELEGRAM_BOT_TOKEN` | Parol tiklash boti tokeni | bo'sh (o'chiq) |
+| `ALLOW_REGISTRATION` | O'quvchilar o'zi ro'yxatdan o'tishi (`0` = o'chiq) | `1` |
 | `PORT` | `python app.py` uchun port | `5000` |
 
 ## Testlar
