@@ -29,8 +29,10 @@ td input, td select, .inline input, .inline select { display:inline-block; width
 .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:16px; }
 .tile { background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; color:inherit; display:flex; flex-direction:column; }
 .tile:hover { text-decoration:none; box-shadow:0 4px 14px rgba(0,0,0,.08); }
-.thumb { position:relative; aspect-ratio:4/3; background:#e9edf3; display:flex; align-items:center; justify-content:center; overflow:hidden; border-bottom:1px solid var(--line); }
+.thumb { position:relative; aspect-ratio:16/10; background:#e9edf3; display:flex; align-items:center; justify-content:center; overflow:hidden; border-bottom:1px solid var(--line); }
 .thumb img { width:100%; height:100%; object-fit:cover; object-position:top; }
+/* Slaydlar (keng rasm) qirqilmasin: to'liq ko'rinadi; varaqlar (tik) yuqori qismi bilan ko'rinadi */
+.thumb img.wide { object-fit:contain; }
 .thumb.big { aspect-ratio:4/3; border-radius:12px; border:1px solid var(--line); }
 .ext { font-size:28px; font-weight:700; color:var(--muted); }
 .badge { position:absolute; top:8px; right:8px; background:rgba(20,33,61,.85); color:#fff; font-size:11px; padding:2px 6px; border-radius:6px; }
