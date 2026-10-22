@@ -40,6 +40,8 @@ curl -fsSL https://raw.githubusercontent.com/Jasurbekmurphy/bilim/main/deploy/in
 
 Skript Docker'ni o'rnatadi, kodni `/opt/bilim` ga yuklab oladi, saytni ishga tushiradi va oxirida sayt manzili hamda admin parolini chiqaradi. Har kuni zaxira nusxa `/opt/bilim-backups` ga yoziladi (oxirgi 14 kun).
 
+**Serverda boshqa saytlar (nginx) bo'lsa:** skript buni o'zi aniqlaydi, mavjud nginx'ga tegmaydi va platformani unga alohida `bilim.conf` fayli orqali ulaydi. Bu holatda domen yoki subdomen majburiy.
+
 **Domen ulash (HTTPS bilan):** domenning DNS sozlamasida `A` yozuvini server IP'siga yo'naltiring, keyin:
 
 ```bash
