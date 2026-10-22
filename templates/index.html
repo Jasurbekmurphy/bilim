@@ -25,7 +25,7 @@
   <a href="{{ url_for('index') }}" class="muted">Tozalash</a>
 </form>
 <h1>{{ 'Saqlangan resurslar' if request.args.saved else 'Resurslar' }} <span class="muted">({{ resources|length }})</span></h1>
-{% if not resources %}<p class="muted">Hozircha bu yerda resurs yo'q.</p>{% endif %}
+{% if not resources %}<div class="empty glass"><img class="i3d" src="{{ url_for('static', filename='icons/books.webp') }}" alt=""><p class="muted">Hozircha bu yerda resurs yo'q.</p></div>{% endif %}
 <div class="grid">
 {% for r in resources %}
   <a class="tile" href="{{ url_for('resource', rid=r.id) }}">

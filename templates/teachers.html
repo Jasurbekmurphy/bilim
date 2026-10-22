@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from "_stars.html" import stars %}
 {% block content %}
-<h1>O'qituvchilar reytingi</h1>
+<h1><img class="i3d" src="{{ url_for('static', filename='icons/trophy.webp') }}" alt=""> O'qituvchilar reytingi</h1>
 <p class="muted">Har bir resurs balli = o'rtacha baho × {{ formula[0] }} + like × {{ formula[1] }} + hisobga o'tgan izoh × {{ formula[2] }}. O'qituvchi reytingi barcha resurslari ballining yig'indisi.</p>
 <table>
   <tr><th>#</th><th>O'qituvchi</th><th>Kafedra</th><th>Resurslar</th><th>O'rtacha baho</th><th>Like</th><th>Yuklab olishlar</th><th>Reyting</th></tr>

@@ -9,7 +9,13 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+<link rel="icon" href="{{ url_for('static', filename='icons/books.webp') }}">
+<meta name="color-scheme" content="dark light">
+<script>
+// Saqlangan rejim, bo'lmasa tizim sozlamasi: sahifa miltillamasligi uchun boshida qo'yiladi
+(() => { let t; try { t = localStorage.getItem('theme'); } catch (e) {}
+  document.documentElement.dataset.theme = t || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'); })();
+</script>
 </head>
 <body>
 <div class="bg-orbs"><span></span><span></span><span></span></div>
@@ -18,7 +24,8 @@
   <a href="{{ url_for(endpoint, **kwargs) }}" class="{{ 'active' if request.endpoint == endpoint and not request.args.saved and not request.args.teacher }}">{{ label }}</a>
 {%- endmacro %}
 <header class="topbar">
-  <a class="brand" href="{{ url_for('index') if u else url_for('landing') }}"><span class="logo">📚</span>Bilimlar manbai</a>
+  <a class="brand" href="{{ url_for('index') if u else url_for('landing') }}"><span class="logo"><img src="{{ url_for('static', filename='icons/books.webp') }}" alt=""></span>Bilimlar manbai</a>
+  <button type="button" class="theme-toggle" id="theme-toggle" title="Yorug'/qorong'u rejim" aria-label="Yorug'/qorong'u rejim"><img class="sun" src="{{ url_for('static', filename='icons/sun.webp') }}" alt=""><img class="moon" src="{{ url_for('static', filename='icons/moon.webp') }}" alt=""></button>
   <input type="checkbox" id="nav-toggle" class="nav-toggle">
   <label for="nav-toggle" class="burger" aria-label="Menyu">☰</label>
   {% if u %}
@@ -36,7 +43,7 @@
     {% endif %}
   </nav>
   <div class="me">
-    {% if u.role in ('teacher', 'admin') %}<a class="btn small" href="{{ url_for('upload') }}">＋ Yuklash</a>{% endif %}
+    {% if u.role in ('teacher', 'admin') %}<a class="btn small" href="{{ url_for('upload') }}"><img class="i3d" src="{{ url_for('static', filename='icons/upload.webp') }}" alt=""> Yuklash</a>{% endif %}
     <a class="avatar-pill" href="{{ url_for('profile') }}" title="Profil">
       <span class="avatar">{{ u.full_name[:1]|upper }}</span>
       <span>{{ u.full_name.split()[0] }}<small>{{ ROLE_NAMES[u.role] }}</small></span>
@@ -67,5 +74,12 @@
   {% block content %}{% endblock %}
 </main>
 {% block footer %}{% endblock %}
+<script>
+document.getElementById('theme-toggle').addEventListener('click', () => {
+  const t = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+  document.documentElement.dataset.theme = t;
+  try { localStorage.setItem('theme', t); } catch (e) {}
+});
+</script>
 </body>
 </html>

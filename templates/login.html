@@ -2,7 +2,8 @@
 {% block title %}Kirish · Bilimlar manbai{% endblock %}
 {% block content %}
 <div class="card narrow">
-  <h1>Xush kelibsiz 👋</h1>
+  <img class="i3d lg card-icon" src="{{ url_for('static', filename='icons/key.webp') }}" alt="">
+  <h1>Xush kelibsiz</h1>
   <p class="muted">O'qituvchilar login va parolni administratordan oladi. O'quvchilar o'zi ro'yxatdan o'tadi.</p>
   <form method="post">
     <input type="hidden" name="csrf" value="{{ csrf_token() }}">

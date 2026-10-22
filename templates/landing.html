@@ -12,17 +12,18 @@
     </div>
   </div>
   <div class="scene" id="scene">
+    <div class="hero-icons"><img class="h1" src="{{ url_for('static', filename='icons/rocket.webp') }}" alt=""><img class="h2" src="{{ url_for('static', filename='icons/cap.webp') }}" alt=""><img class="h3" src="{{ url_for('static', filename='icons/bulb.webp') }}" alt=""></div>
     <div class="orbit"></div><div class="orbit o2"></div>
-    <div class="float a">📄 Birinchi bet darhol ko'rinadi</div>
-    <div class="float b">⭐ Baho, like va izohlar</div>
+    <div class="float a"><img src="{{ url_for('static', filename='icons/page.webp') }}" alt=""> Birinchi bet darhol ko'rinadi</div>
+    <div class="float b"><img src="{{ url_for('static', filename='icons/star.webp') }}" alt=""> Baho, like va izohlar</div>
     <div class="cube-wrap" id="cube-wrap">
       <div class="cube">
-        <div class="face f1"><div><b>⚙️</b><span>Mashinasozlik</span></div></div>
-        <div class="face f2"><div><b>⚡</b><span>Elektrotexnika</span></div></div>
-        <div class="face f3"><div><b>💻</b><span>Axborot texnologiyalari</span></div></div>
-        <div class="face f4"><div><b>🚗</b><span>Avtotransport</span></div></div>
-        <div class="face f5"><div><b>🔧</b><span>Amaliyot</span></div></div>
-        <div class="face f6"><div><b>📚</b><span>Bilim</span></div></div>
+        <div class="face f1"><div><img src="{{ url_for('static', filename='icons/gear.webp') }}" alt=""><span>Mashinasozlik</span></div></div>
+        <div class="face f2"><div><img src="{{ url_for('static', filename='icons/bolt.webp') }}" alt=""><span>Elektrotexnika</span></div></div>
+        <div class="face f3"><div><img src="{{ url_for('static', filename='icons/laptop.webp') }}" alt=""><span>Axborot texnologiyalari</span></div></div>
+        <div class="face f4"><div><img src="{{ url_for('static', filename='icons/car.webp') }}" alt=""><span>Avtotransport</span></div></div>
+        <div class="face f5"><div><img src="{{ url_for('static', filename='icons/tools.webp') }}" alt=""><span>Amaliyot</span></div></div>
+        <div class="face f6"><div><img src="{{ url_for('static', filename='icons/books.webp') }}" alt=""><span>Bilim</span></div></div>
       </div>
     </div>
   </div>
@@ -30,10 +31,10 @@
 
 <section class="section reveal">
   <div class="stats">
-    <div class="stat glass"><b data-count="{{ stats.resources }}">0</b><span>o'quv resursi</span></div>
-    <div class="stat glass"><b data-count="{{ stats.teachers }}">0</b><span>pedagog</span></div>
-    <div class="stat glass"><b data-count="{{ stats.students }}">0</b><span>o'quvchi</span></div>
-    <div class="stat glass"><b data-count="{{ stats.downloads }}">0</b><span>yuklab olish</span></div>
+    <div class="stat glass"><img src="{{ url_for('static', filename='icons/books.webp') }}" alt=""><div><b data-count="{{ stats.resources }}">0</b><span>o'quv resursi</span></div></div>
+    <div class="stat glass"><img src="{{ url_for('static', filename='icons/building.webp') }}" alt=""><div><b data-count="{{ stats.teachers }}">0</b><span>pedagog</span></div></div>
+    <div class="stat glass"><img src="{{ url_for('static', filename='icons/cap.webp') }}" alt=""><div><b data-count="{{ stats.students }}">0</b><span>o'quvchi</span></div></div>
+    <div class="stat glass"><img src="{{ url_for('static', filename='icons/upload.webp') }}" alt=""><div><b data-count="{{ stats.downloads }}">0</b><span>yuklab olish</span></div></div>
   </div>
 </section>
 
@@ -44,9 +45,9 @@
     <p class="muted">Har bir pedagogning tajribasi butun texnikumga xizmat qiladi.</p>
   </div>
   <div class="steps">
-    <div class="step glass"><div class="ico">📤</div><h3>O'qituvchi joylaydi</h3><p class="muted">PowerPoint, Word, PDF yoki rasm. Kafedra va mutaxassislikni tanlaydi, birinchi bet avtomatik rasmga aylanadi.</p></div>
-    <div class="step glass"><div class="ico">🔎</div><h3>O'quvchi topadi</h3><p class="muted">Kafedra, mutaxassislik, o'qituvchi bo'yicha saralaydi, qidiradi, brauzerda ko'radi yoki yuklab oladi.</p></div>
-    <div class="step glass"><div class="ico">🏆</div><h3>Reyting shakllanadi</h3><p class="muted">Baho, like va izohlar resurs va o'qituvchi reytingini ko'taradi. Eng foydali materiallar yuqoriga chiqadi.</p></div>
+    <div class="step glass"><img class="ico" src="{{ url_for('static', filename='icons/upload.webp') }}" alt=""><h3>O'qituvchi joylaydi</h3><p class="muted">PowerPoint, Word, PDF yoki rasm. Kafedra va mutaxassislikni tanlaydi, birinchi bet avtomatik rasmga aylanadi.</p></div>
+    <div class="step glass"><img class="ico" src="{{ url_for('static', filename='icons/search.webp') }}" alt=""><h3>O'quvchi topadi</h3><p class="muted">Kafedra, mutaxassislik, o'qituvchi bo'yicha saralaydi, qidiradi, brauzerda ko'radi yoki yuklab oladi.</p></div>
+    <div class="step glass"><img class="ico" src="{{ url_for('static', filename='icons/trophy.webp') }}" alt=""><h3>Reyting shakllanadi</h3><p class="muted">Baho, like va izohlar resurs va o'qituvchi reytingini ko'taradi. Eng foydali materiallar yuqoriga chiqadi.</p></div>
   </div>
 </section>
 
@@ -58,16 +59,16 @@
   </div>
   <div class="facts">
     {% for icon, title, sub, year, text in [
-      ('⚡', 'Om qonuni', 'Elektrotexnika', '1827', "Nemis fizigi Georg Om tok kuchi, kuchlanish va qarshilik orasidagi bog'lanishni e'lon qilgan. Bugun har bir elektrik shu formuladan boshlaydi."),
-      ('🔥', 'Elektr yoy payvandlash', 'Payvandlash ishlari', '1881', "Nikolay Benardos ko'mir elektrodli yoy payvandlashni Parijdagi elektr ko'rgazmasida namoyish qilgan. Bu usul metall konstruksiyalar yasashni butunlay o'zgartirgan."),
-      ('⚙️', 'Ilk tokarlik dastgohi', 'Tokarlik ishi', 'Mil. av. ~1300', "Qadimgi Misrda kamon yordamida aylantiriladigan eng sodda tokarlik dastgohlari ishlatilgan. Hozirgi CNC dastgohlar o'sha g'oyaning davomi."),
-      ('🚗', 'Birinchi avtomobil', 'Avtotransport', '1886', "Karl Benz ichki yonuv dvigatelli uch g'ildirakli «Motorwagen» uchun patent olgan. U zamonaviy avtomobilning boshlanishi hisoblanadi."),
-      ('🌐', 'Internet tug\'ilgan kun', 'Kompyuter tarmoqlari', '1983', "1-yanvar kuni ARPANET tarmog'i TCP/IP protokoliga o'tgan. Shu sana ko'pincha internetning tug'ilgan kuni deb ataladi."),
-      ('🐍', 'Python tili', 'Dasturlash asoslari', '1991', "Gvido van Rossum Python dasturlash tilini e'lon qilgan. Bugun u ta'limda eng ko'p o'rgatiladigan tillardan biri."),
+      ('bolt', 'Om qonuni', 'Elektrotexnika', '1827', "Nemis fizigi Georg Om tok kuchi, kuchlanish va qarshilik orasidagi bog'lanishni e'lon qilgan. Bugun har bir elektrik shu formuladan boshlaydi."),
+      ('fire', 'Elektr yoy payvandlash', 'Payvandlash ishlari', '1881', "Nikolay Benardos ko'mir elektrodli yoy payvandlashni Parijdagi elektr ko'rgazmasida namoyish qilgan. Bu usul metall konstruksiyalar yasashni butunlay o'zgartirgan."),
+      ('gear', 'Ilk tokarlik dastgohi', 'Tokarlik ishi', 'Mil. av. ~1300', "Qadimgi Misrda kamon yordamida aylantiriladigan eng sodda tokarlik dastgohlari ishlatilgan. Hozirgi CNC dastgohlar o'sha g'oyaning davomi."),
+      ('car', 'Birinchi avtomobil', 'Avtotransport', '1886', "Karl Benz ichki yonuv dvigatelli uch g'ildirakli «Motorwagen» uchun patent olgan. U zamonaviy avtomobilning boshlanishi hisoblanadi."),
+      ('globe', 'Internet tug\'ilgan kun', 'Kompyuter tarmoqlari', '1983', "1-yanvar kuni ARPANET tarmog'i TCP/IP protokoliga o'tgan. Shu sana ko'pincha internetning tug'ilgan kuni deb ataladi."),
+      ('snake', 'Python tili', 'Dasturlash asoslari', '1991', "Gvido van Rossum Python dasturlash tilini e'lon qilgan. Bugun u ta'limda eng ko'p o'rgatiladigan tillardan biri."),
     ] %}
     <div class="flip" tabindex="0">
       <div class="flip-inner">
-        <div class="flip-face flip-front glass"><b>{{ icon }}</b><h3>{{ title }}</h3><small>{{ sub }}</small></div>
+        <div class="flip-face flip-front glass"><img src="{{ url_for('static', filename='icons/' ~ icon ~ '.webp') }}" alt=""><h3>{{ title }}</h3><small>{{ sub }}</small></div>
         <div class="flip-face flip-back glass"><span class="year">{{ year }}</span><p>{{ text }}</p></div>
       </div>
     </div>
@@ -83,13 +84,17 @@
   </div>
   <div class="deps">
     {% for d in deps %}
-    <div class="dep glass tilt"><h3>{{ d.name }}</h3><div class="muted">{{ d.n }} ta resurs · {{ d.specs }} ta mutaxassislik</div></div>
+    {% set n = d.name|lower %}
+    {% set icon = 'car' if 'avto' in n else 'bolt' if 'elektr' in n or 'energ' in n else 'laptop' if 'axborot' in n or 'kompyuter' in n or 'dastur' in n
+       else 'gear' if 'mashina' in n or 'mexan' in n else 'fire' if 'payvand' in n else 'building' if 'qurilish' in n else 'chart' if 'iqtisod' in n else 'books' %}
+    <div class="dep glass tilt"><img src="{{ url_for('static', filename='icons/' ~ icon ~ '.webp') }}" alt=""><div><h3>{{ d.name }}</h3><div class="muted">{{ d.n }} ta resurs · {{ d.specs }} ta mutaxassislik</div></div></div>
     {% endfor %}
   </div>
 </section>
 {% endif %}
 
 <section class="cta-band glass reveal">
+  <img src="{{ url_for('static', filename='icons/rocket.webp') }}" alt="">
   <h2 style="font-size:clamp(24px,3vw,34px);margin:0 0 8px">Bilimingizni ulashing, boshqalarnikidan o'rganing</h2>
   <p class="muted">O'quvchilar bir daqiqada ro'yxatdan o'tadi. O'qituvchilarga login va parolni administrator beradi.</p>
   <div class="cta">
