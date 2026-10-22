@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Foydalanuvchilar</h1>
+<div class="two">
+  <div class="card">
+    <h2>Yangi foydalanuvchi</h2>
+    <form method="post">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <label>F.I.Sh. <input name="full_name" required></label>
+      <label>Login <input name="username" required></label>
+      <label>Parol <input name="password" placeholder="Bo'sh qolsa avtomatik yaratiladi"></label>
+      <label>Rol
+        <select name="role"><option value="teacher">O'qituvchi</option><option value="student">O'quvchi</option><option value="admin">Administrator</option></select>
+      </label>
+      <label>Kafedra
+        <select name="department"><option value="">—</option>{% for d in departments %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}</select>
+      </label>
+      <label>Guruh (o'quvchilar uchun) <input name="group_name"></label>
+      <button class="btn">Yaratish</button>
+    </form>
+  </div>
+  <div class="card">
+    <h2>Ro'yxatdan ko'plab qo'shish</h2>
+    <p class="muted small">Excel (.xlsx) yoki CSV fayl. Ustunlar tartibi: <b>login, F.I.Sh., rol, kafedra, guruh, parol</b>. Rol: <i>teacher</i>/<i>o'qituvchi</i> yoki <i>student</i>/<i>o'quvchi</i>. Kafedra, guruh va parol ixtiyoriy; parol bo'sh bo'lsa avtomatik yaratiladi va natija sahifasida ko'rsatiladi.</p>
+    <form method="post" action="{{ url_for('admin_import') }}" enctype="multipart/form-data">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <input type="file" name="file" accept=".xlsx,.csv" required>
+      <button class="btn">Import qilish</button>
+    </form>
+  </div>
+</div>
+<p>
+  <a href="{{ url_for('admin_users') }}">Hammasi</a> ·
+  <a href="{{ url_for('admin_users', role='teacher') }}">O'qituvchilar</a> ·
+  <a href="{{ url_for('admin_users', role='student') }}">O'quvchilar</a> ·
+  <a href="{{ url_for('admin_users', role='admin') }}">Adminlar</a>
+</p>
+<table>
+  <tr><th>F.I.Sh.</th><th>Login</th><th>Rol</th><th>Kafedra / guruh</th><th>Holat</th><th></th></tr>
+  {% for x in users %}
+  <tr class="{{ '' if x.is_active else 'dim' }}">
+    <td><a href="{{ url_for('admin_user_sessions', uid=x.id) }}">{{ x.full_name }}</a></td>
+    <td>{{ x.username }}</td>
+    <td>{{ ROLE_NAMES[x.role] }}</td>
+    <td>{{ x.department_name or '' }}{% if x.group_name %} · {{ x.group_name }}{% endif %}</td>
+    <td>{{ 'Faol' if x.is_active else 'Bloklangan' }}</td>
+    <td class="actions">
+      {% for action, label in [('parol', 'Yangi parol'), ('bloklash', 'Faollashtirish' if not x.is_active else 'Bloklash'), ('ochirish', "O'chirish")] %}
+      <form method="post" action="{{ url_for('admin_user_action', uid=x.id, action=action) }}" class="inline"
+            {% if action == 'ochirish' %}onsubmit="return confirm('O\'chirilsinmi?')"{% endif %}>
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="link small">{{ label }}</button>
+      </form>
+      {% endfor %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

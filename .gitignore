@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.venv/
+texnikum.db
+.secret_key
+uploads/
+previews/
+data/

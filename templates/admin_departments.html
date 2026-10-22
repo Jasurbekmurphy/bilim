@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Kafedralar va mutaxassisliklar</h1>
+<div class="two">
+  <div class="card">
+    <h2>Kafedra qo'shish</h2>
+    <form method="post">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="kind" value="department">
+      <label>Nomi <input name="name" required></label>
+      <button class="btn">Qo'shish</button>
+    </form>
+  </div>
+  <div class="card">
+    <h2>Mutaxassislik qo'shish</h2>
+    <form method="post">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="kind" value="specialty">
+      <label>Kafedra
+        <select name="department" required><option value="">—</option>{% for d in departments %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}</select>
+      </label>
+      <label>Nomi <input name="name" required></label>
+      <button class="btn">Qo'shish</button>
+    </form>
+  </div>
+</div>
+
+<h2>Kafedralar</h2>
+<table>
+  <tr><th>Nomi</th><th>Resurslar</th><th></th></tr>
+  {% for d in departments %}
+  <tr>
+    <td>
+      <form method="post" action="{{ url_for('admin_department_action', did=d.id, action='nom') }}" class="inline">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}"><input name="name" value="{{ d.name }}"> <button class="link small">Saqlash</button>
+      </form>
+    </td>
+    <td>{{ d.resource_count }}</td>
+    <td><form method="post" action="{{ url_for('admin_department_action', did=d.id, action='ochirish') }}" class="inline" onsubmit="return confirm('O\'chirilsinmi?')">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="link small">O'chirish</button></form></td>
+  </tr>
+  {% endfor %}
+</table>
+
+<h2>Mutaxassisliklar</h2>
+<p class="muted small">O'qituvchilar o'zi yozgan mutaxassisliklar "Tasdiqlanmagan" bo'lib turadi. Ularni tasdiqlang, nomini tuzating yoki mavjud mutaxassislik bilan birlashtiring.</p>
+<table>
+  <tr><th>Nomi</th><th>Kafedra</th><th>Holat</th><th>Resurslar</th><th></th></tr>
+  {% for s in specialties %}
+  <tr class="{{ 'pending' if not s.approved }}">
+    <td>
+      <form method="post" action="{{ url_for('admin_specialty_action', sid=s.id, action='nom') }}" class="inline">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}"><input name="name" value="{{ s.name }}"> <button class="link small">Saqlash</button>
+      </form>
+    </td>
+    <td>{{ s.department_name }}</td>
+    <td>{% if s.approved %}Tasdiqlangan{% else %}<b>Tasdiqlanmagan</b><br><span class="muted small">{{ s.author }}</span>{% endif %}</td>
+    <td>{{ s.resource_count }}</td>
+    <td class="actions">
+      {% if not s.approved %}
+      <form method="post" action="{{ url_for('admin_specialty_action', sid=s.id, action='tasdiqlash') }}" class="inline">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="link small">Tasdiqlash</button></form>
+      {% endif %}
+      <form method="post" action="{{ url_for('admin_specialty_action', sid=s.id, action='birlashtirish') }}" class="inline">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+        <select name="target"><option value="">Birlashtirish…</option>
+          {% for t in specialties if t.approved and t.id != s.id and t.department_id == s.department_id %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}
+        </select><button class="link small">OK</button>
+      </form>
+      <form method="post" action="{{ url_for('admin_specialty_action', sid=s.id, action='ochirish') }}" class="inline" onsubmit="return confirm('O\'chirilsinmi? Resurslar mutaxassisliksiz qoladi.')">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="link small">O'chirish</button></form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}
