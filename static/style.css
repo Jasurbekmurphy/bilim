@@ -275,6 +275,11 @@ code { background: var(--tint-2); padding: 2px 7px; border-radius: 6px; }
 @media (max-width: 420px) { .scene { width: 260px; height: 260px; } .f1 { transform: translateZ(80px); } .f2 { transform: rotateY(90deg) translateZ(80px); }
   .f3 { transform: rotateY(180deg) translateZ(80px); } .f4 { transform: rotateY(-90deg) translateZ(80px); } .f5 { transform: rotateX(90deg) translateZ(80px); }
   .f6 { transform: rotateX(-90deg) translateZ(80px); } .face img { width: 70px; height: 70px; } }
+.float { position: absolute; display: flex; align-items: center; gap: 8px; border-radius: 18px; background: var(--glass-strong); border: 1px solid var(--glass-border);
+  backdrop-filter: var(--blur); padding: 8px 14px 8px 8px; font-size: 13px; font-weight: 600; box-shadow: var(--shadow); animation: bob 6s ease-in-out infinite; white-space: nowrap; z-index: 2; }
+.float img { width: 34px; height: 34px; }
+.float.b { bottom: 6%; right: -16%; animation-delay: -3s; }
+@media (max-width: 900px) { .float.b { right: -4%; } }
 @keyframes bob { 50% { transform: translateY(-14px); } }
 /* Fon bo'ylab suzuvchi 3D ikonkalar */
 .hero-icons img { position: absolute; z-index: 1; pointer-events: none; filter: drop-shadow(0 18px 24px rgba(20,20,60,.3)); animation: bob 7s ease-in-out infinite; }
