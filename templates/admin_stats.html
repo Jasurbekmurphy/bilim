@@ -9,6 +9,7 @@
     <option value="">Hamma</option>
     <option value="teacher" {{ 'selected' if request.args.role == 'teacher' }}>O'qituvchilar</option>
     <option value="student" {{ 'selected' if request.args.role == 'student' }}>O'quvchilar</option>
+    <option value="user" {{ 'selected' if request.args.role == 'user' }}>Foydalanuvchilar</option>
   </select>
 </form>
 <div class="kpis">

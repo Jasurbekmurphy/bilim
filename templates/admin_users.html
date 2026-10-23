@@ -10,7 +10,7 @@
       <label>Login <input name="username" required></label>
       <label>Parol <input name="password" placeholder="Bo'sh qolsa avtomatik yaratiladi"></label>
       <label>Rol
-        <select name="role"><option value="teacher">O'qituvchi</option><option value="student">O'quvchi</option><option value="admin">Administrator</option></select>
+        <select name="role"><option value="teacher">O'qituvchi</option><option value="student">O'quvchi</option><option value="user">Foydalanuvchi</option><option value="admin">Administrator</option></select>
       </label>
       <label>Kafedra
         <select name="department"><option value="">—</option>{% for d in departments %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}</select>
@@ -33,6 +33,7 @@
   <a href="{{ url_for('admin_users') }}">Hammasi</a> ·
   <a href="{{ url_for('admin_users', role='teacher') }}">O'qituvchilar</a> ·
   <a href="{{ url_for('admin_users', role='student') }}">O'quvchilar</a> ·
+  <a href="{{ url_for('admin_users', role='user') }}">Foydalanuvchilar</a> ·
   <a href="{{ url_for('admin_users', role='admin') }}">Adminlar</a>
 </p>
 <table>

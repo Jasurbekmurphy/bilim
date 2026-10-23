@@ -1080,7 +1080,8 @@ def admin_import():
     db = get_db()
     deps = {d["name"].lower(): d["id"] for d in departments()}
     role_alias = {"teacher": "teacher", "o'qituvchi": "teacher", "oqituvchi": "teacher",
-                  "student": "student", "o'quvchi": "student", "oquvchi": "student"}
+                  "student": "student", "o'quvchi": "student", "oquvchi": "student",
+                  "user": "user", "foydalanuvchi": "user"}
     created, skipped = [], []
     for row in rows:
         row = (row + [""] * 6)[:6]
