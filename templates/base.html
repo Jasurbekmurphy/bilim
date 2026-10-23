@@ -17,43 +17,60 @@
   document.documentElement.dataset.theme = t || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'); })();
 </script>
 </head>
-<body>
-<div class="bg-orbs"><span></span><span></span><span></span></div>
 {% set u = current_user() %}
-{% macro navlink(endpoint, label) -%}
-  <a href="{{ url_for(endpoint, **kwargs) }}" class="{{ 'active' if request.endpoint == endpoint and not request.args.saved and not request.args.teacher }}">{{ label }}</a>
+<body class="{{ 'has-side' if u }}">
+<div class="bg-orbs"><span></span><span></span><span></span></div>
+{% macro sidelink(href, label, icon, active) -%}
+  <a href="{{ href }}" class="{{ 'active' if active }}"><img src="{{ url_for('static', filename='icons/' ~ icon ~ '.webp') }}" alt="">{{ label }}</a>
 {%- endmacro %}
-<header class="topbar">
+{% if u %}
+<input type="checkbox" id="side-toggle" class="side-toggle">
+<header class="mobilebar">
   <a class="brand" href="{{ url_for('index') if u else url_for('landing') }}"><span class="logo"><img src="{{ url_for('static', filename='icons/books.webp') }}" alt=""></span>Bilimlar manbai</a>
-  <button type="button" class="theme-toggle" id="theme-toggle" title="Yorug'/qorong'u rejim" aria-label="Yorug'/qorong'u rejim"><img class="sun" src="{{ url_for('static', filename='icons/sun.webp') }}" alt=""><img class="moon" src="{{ url_for('static', filename='icons/moon.webp') }}" alt=""></button>
-  <input type="checkbox" id="nav-toggle" class="nav-toggle">
-  <label for="nav-toggle" class="burger" aria-label="Menyu">☰</label>
-  {% if u %}
-  <nav>
-    {{ navlink('index', 'Resurslar') }}
-    <a href="{{ url_for('index', saved=1) }}" class="{{ 'active' if request.args.saved }}">Saqlanganlar</a>
-    {{ navlink('teacher_rating', 'Reyting') }}
+  <button type="button" class="theme-toggle" title="Yorug'/qorong'u rejim" aria-label="Yorug'/qorong'u rejim"><img class="sun" src="{{ url_for('static', filename='icons/sun.webp') }}" alt=""><img class="moon" src="{{ url_for('static', filename='icons/moon.webp') }}" alt=""></button>
+  <label for="side-toggle" class="burger" aria-label="Menyu">☰</label>
+</header>
+<aside class="sidebar">
+  <a class="brand" href="{{ url_for('index') if u else url_for('landing') }}"><span class="logo"><img src="{{ url_for('static', filename='icons/books.webp') }}" alt=""></span>Bilimlar manbai</a>
+  {% if u.role in ('teacher', 'admin') %}<a class="btn side-cta" href="{{ url_for('upload') }}"><img class="i3d" src="{{ url_for('static', filename='icons/upload.webp') }}" alt=""> Resurs yuklash</a>{% endif %}
+  <nav class="side-nav">
+    <div class="side-label">Asosiy</div>
+    {% set plain_index = request.endpoint == 'index' and not request.args.saved and not request.args.teacher %}
+    {{ sidelink(url_for('index'), 'Resurslar', 'books', plain_index) }}
+    {{ sidelink(url_for('index', saved=1), 'Saqlanganlar', 'heart', request.args.saved) }}
+    {{ sidelink(url_for('teacher_rating'), 'Reyting', 'trophy', request.endpoint == 'teacher_rating') }}
     {% if u.role in ('teacher', 'admin') %}
-      <a href="{{ url_for('my_resources') }}" class="{{ 'active' if request.args.teacher == u.id|string }}">Mening resurslarim</a>
+    {{ sidelink(url_for('my_resources'), 'Mening resurslarim', 'folder', request.args.teacher == u.id|string) }}
     {% endif %}
     {% if u.role == 'admin' %}
-      {{ navlink('admin_users', 'Foydalanuvchilar') }}
-      {{ navlink('admin_departments', 'Kafedralar') }}
-      {{ navlink('admin_stats', 'Statistika') }}
+    <div class="side-label">Boshqaruv</div>
+    {{ sidelink(url_for('admin_dashboard'), 'Dashboard', 'laptop', request.endpoint == 'admin_dashboard') }}
+    {{ sidelink(url_for('admin_users'), 'Foydalanuvchilar', 'cap', request.endpoint in ('admin_users', 'admin_import')) }}
+    {{ sidelink(url_for('admin_departments'), 'Kafedralar va guruhlar', 'building', request.endpoint == 'admin_departments') }}
+    {{ sidelink(url_for('admin_stats'), 'Statistika', 'chart', request.endpoint in ('admin_stats', 'admin_user_sessions')) }}
     {% endif %}
   </nav>
-  <div class="me">
-    {% if u.role in ('teacher', 'admin') %}<a class="btn small" href="{{ url_for('upload') }}"><img class="i3d" src="{{ url_for('static', filename='icons/upload.webp') }}" alt=""> Yuklash</a>{% endif %}
-    <a class="avatar-pill" href="{{ url_for('profile') }}" title="Profil">
+  <div class="side-foot">
+    <a class="avatar-pill {{ 'active' if request.endpoint == 'profile' }}" href="{{ url_for('profile') }}" title="Profil">
       <span class="avatar">{{ u.full_name[:1]|upper }}</span>
-      <span>{{ u.full_name.split()[0] }}<small>{{ ROLE_NAMES[u.role] }}</small></span>
+      <span>{{ u.full_name }}<small>{{ ROLE_NAMES[u.role] }}</small></span>
     </a>
-    <form method="post" action="{{ url_for('logout') }}" class="inline">
-      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
-      <button class="btn ghost small" title="Chiqish">Chiqish</button>
-    </form>
+    <div class="side-row">
+      <button type="button" class="theme-toggle" title="Yorug'/qorong'u rejim" aria-label="Yorug'/qorong'u rejim"><img class="sun" src="{{ url_for('static', filename='icons/sun.webp') }}" alt=""><img class="moon" src="{{ url_for('static', filename='icons/moon.webp') }}" alt=""></button>
+      <form method="post" action="{{ url_for('logout') }}" class="inline">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+        <button class="btn ghost small">Chiqish</button>
+      </form>
+    </div>
   </div>
-  {% else %}
+</aside>
+<label for="side-toggle" class="side-overlay" aria-hidden="true"></label>
+{% else %}
+<header class="topbar">
+  <a class="brand" href="{{ url_for('index') if u else url_for('landing') }}"><span class="logo"><img src="{{ url_for('static', filename='icons/books.webp') }}" alt=""></span>Bilimlar manbai</a>
+  <button type="button" class="theme-toggle" title="Yorug'/qorong'u rejim" aria-label="Yorug'/qorong'u rejim"><img class="sun" src="{{ url_for('static', filename='icons/sun.webp') }}" alt=""><img class="moon" src="{{ url_for('static', filename='icons/moon.webp') }}" alt=""></button>
+  <input type="checkbox" id="nav-toggle" class="nav-toggle">
+  <label for="nav-toggle" class="burger" aria-label="Menyu">☰</label>
   <nav>
     {% if request.endpoint == 'landing' %}
     <a href="#imkoniyatlar">Imkoniyatlar</a>
@@ -65,8 +82,8 @@
     <a class="btn ghost small" href="{{ url_for('login') }}">Kirish</a>
     {% if allow_registration %}<a class="btn small" href="{{ url_for('register') }}">Ro'yxatdan o'tish</a>{% endif %}
   </div>
-  {% endif %}
 </header>
+{% endif %}
 <main>
   {% for cat, msg in get_flashed_messages(with_categories=true) %}
     <div class="flash {{ cat }}">{{ msg }}</div>
@@ -75,11 +92,11 @@
 </main>
 {% block footer %}{% endblock %}
 <script>
-document.getElementById('theme-toggle').addEventListener('click', () => {
+document.querySelectorAll('.theme-toggle').forEach(b => b.addEventListener('click', () => {
   const t = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
   document.documentElement.dataset.theme = t;
   try { localStorage.setItem('theme', t); } catch (e) {}
-});
+}));
 </script>
 </body>
 </html>

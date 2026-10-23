@@ -35,7 +35,10 @@ SCORE_LIKE = 1.0
 SCORE_COMMENT = 0.5
 # Shu vaqtdan ko'p harakatsiz qolsa, sessiya tugagan deb hisoblanadi
 IDLE_TIMEOUT = timedelta(minutes=30)
-ROLE_NAMES = {"admin": "Administrator", "teacher": "O'qituvchi", "student": "O'quvchi"}
+ROLE_NAMES = {"admin": "Administrator", "teacher": "O'qituvchi", "student": "O'quvchi",
+              "user": "Foydalanuvchi"}
+# O'zi ro'yxatdan o'tganda tanlash mumkin bo'lgan rollar
+SELF_ROLES = ("user", "student")
 # O'quvchilar o'zi ro'yxatdan o'tadi; o'qituvchilarga login/parolni admin beradi
 ALLOW_REGISTRATION = os.environ.get("ALLOW_REGISTRATION", "1") != "0"
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_.]{3,30}$")
@@ -80,12 +83,17 @@ CREATE TABLE IF NOT EXISTS users (
     username TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     full_name TEXT NOT NULL,
-    role TEXT NOT NULL CHECK (role IN ('admin', 'teacher', 'student')),
+    role TEXT NOT NULL CHECK (role IN ('admin', 'teacher', 'student', 'user')),
     department_id INTEGER REFERENCES departments(id) ON DELETE SET NULL,
     group_name TEXT,
     is_active INTEGER NOT NULL DEFAULT 1,
     must_change_password INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS groups (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    department_id INTEGER REFERENCES departments(id) ON DELETE SET NULL
 );
 CREATE TABLE IF NOT EXISTS resources (
     id INTEGER PRIMARY KEY,
@@ -196,6 +204,19 @@ def close_db(_exc):
 
 def migrate(db):
     """Eski bazaga yangi ustunlarni qo'shadi; mavjud ma'lumotlar saqlanadi."""
+    users_sql = db.execute("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'").fetchone()[0]
+    if "'user'" not in users_sql:
+        # SQLite CHECK cheklovini o'zgartirib bo'lmaydi: jadval yangi cheklov bilan qayta yaratiladi.
+        # Ulanishda foreign_keys o'chiq, shuning uchun DROP bog'langan yozuvlarni o'chirmaydi.
+        new_sql = users_sql.replace("'student')", "'student', 'user')").replace(
+            "CREATE TABLE users", "CREATE TABLE users_new", 1)
+        cols = ", ".join(row[1] for row in db.execute("PRAGMA table_info(users)"))
+        db.execute("BEGIN")
+        db.execute(new_sql)
+        db.execute(f"INSERT INTO users_new ({cols}) SELECT {cols} FROM users")
+        db.execute("DROP TABLE users")
+        db.execute("ALTER TABLE users_new RENAME TO users")
+        db.execute("COMMIT")
     cols = {row[1] for row in db.execute("PRAGMA table_info(users)")}
     for name, decl in (("telegram_chat_id", "INTEGER"), ("telegram_link_token", "TEXT"),
                        ("telegram_link_expires", "TEXT")):
@@ -210,8 +231,13 @@ def init_db():
     for d in (UPLOAD_DIR, PREVIEW_DIR):
         os.makedirs(d, exist_ok=True)
     db = sqlite3.connect(DB_PATH)
+    had_groups = db.execute("SELECT 1 FROM sqlite_master WHERE name = 'groups'").fetchone()
     db.executescript(SCHEMA)
     migrate(db)
+    if not had_groups:
+        # Avval qo'lda yozilgan guruh nomlari ro'yxatga aylanadi
+        db.execute("INSERT OR IGNORE INTO groups (name) SELECT DISTINCT trim(group_name) FROM users"
+                   " WHERE trim(COALESCE(group_name, '')) != ''")
     if not db.execute("SELECT 1 FROM users WHERE role = 'admin'").fetchone():
         password = os.environ.get("ADMIN_PASSWORD", "admin123")
         # OR IGNORE: bir nechta gunicorn worker bir vaqtda ishga tushganda xato bermasligi uchun
@@ -324,7 +350,8 @@ def login():
         if user and user["is_active"] and check_password_hash(user["password_hash"], request.form.get("password", "")):
             start_session(user["id"])
             nxt = request.args.get("next", "")
-            return redirect(nxt if nxt.startswith("/") and not nxt.startswith("//") else url_for("index"))
+            home = url_for("admin_dashboard") if user["role"] == "admin" else url_for("index")
+            return redirect(nxt if nxt.startswith("/") and not nxt.startswith("//") else home)
         flash("Login yoki parol noto'g'ri, yoki akkaunt bloklangan.", "error")
     return render_template("login.html")
 
@@ -376,9 +403,22 @@ def register():
         username = form.get("username", "").strip()
         full_name = " ".join(form.get("full_name", "").split())
         password = form.get("password", "")
-        dep = form.get("department") or None
-        if len(full_name) < 5:
+        role = form.get("role")
+        dep = (form.get("department") or None) if role == "student" else None
+        group = None
+        if role == "student":
+            gid = form.get("group_id")
+            if gid:
+                row = db.execute("SELECT name FROM groups WHERE id = ?", (gid,)).fetchone()
+                group = row["name"] if row else None
+            elif not groups():
+                group = form.get("group_name", "").strip()[:30] or None
+        if role not in SELF_ROLES:
+            flash("Kim sifatida ro'yxatdan o'tishingizni tanlang.", "error")
+        elif len(full_name) < 5:
             flash("Familiya va ismingizni to'liq yozing.", "error")
+        elif role == "student" and not group:
+            flash("Guruhingizni tanlang.", "error")
         elif not USERNAME_RE.match(username):
             flash("Login 3–30 belgi bo'lsin: lotin harflari, raqamlar, nuqta yoki pastki chiziq.", "error")
         elif db.execute("SELECT 1 FROM users WHERE username = ? COLLATE NOCASE", (username,)).fetchone():
@@ -392,15 +432,14 @@ def register():
         else:
             cur = db.execute(
                 "INSERT INTO users (username, password_hash, full_name, role, department_id, group_name, created_at)"
-                " VALUES (?, ?, ?, 'student', ?, ?, ?)",
-                (username, generate_password_hash(password), full_name, dep,
-                 form.get("group_name", "").strip()[:30] or None, now_str()))
+                " VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (username, generate_password_hash(password), full_name, role, dep, group, now_str()))
             db.commit()
             start_session(cur.lastrowid)
             flash("Xush kelibsiz! Parolni unutib qo'ysangiz tiklay olishingiz uchun Telegramni ulab qo'ying.",
                   "success")
             return redirect(url_for("profile"))
-    return render_template("register.html", departments=departments(), form=form)
+    return render_template("register.html", departments=departments(), groups=groups(), form=form)
 
 
 @app.route("/profil")
@@ -532,6 +571,10 @@ def reset_password():
 
 def departments():
     return get_db().execute("SELECT * FROM departments ORDER BY name").fetchall()
+
+
+def groups():
+    return get_db().execute("SELECT * FROM groups ORDER BY name").fetchall()
 
 
 def specialties(include_unapproved_by=None):
@@ -918,6 +961,48 @@ def my_resources():
 
 # ---------------------------------------------------------------- admin
 
+@app.route("/admin")
+@login_required("admin")
+def admin_dashboard():
+    db = get_db()
+    today = now().date()
+    start = today - timedelta(days=13)
+    counts = db.execute(
+        """SELECT (SELECT COUNT(*) FROM users WHERE role = 'teacher' AND is_active = 1) AS teachers,
+                  (SELECT COUNT(*) FROM users WHERE role = 'student' AND is_active = 1) AS students,
+                  (SELECT COUNT(*) FROM users WHERE role = 'user' AND is_active = 1) AS guests,
+                  (SELECT COUNT(*) FROM resources) AS resources,
+                  (SELECT COUNT(*) FROM resources WHERE hidden = 1) AS hidden,
+                  (SELECT COALESCE(SUM(downloads), 0) FROM resources) AS downloads,
+                  (SELECT COALESCE(SUM(views), 0) FROM resources) AS views,
+                  (SELECT COUNT(*) FROM comments) AS comments,
+                  (SELECT COUNT(*) FROM likes) AS likes,
+                  (SELECT COUNT(*) FROM specialties WHERE approved = 0) AS pending_specs,
+                  (SELECT COUNT(DISTINCT user_id) FROM login_sessions WHERE login_at >= ?) AS today_users,
+                  (SELECT COUNT(DISTINCT user_id) FROM login_sessions
+                    WHERE logout_at IS NULL AND last_seen >= ?) AS online,
+                  (SELECT COUNT(*) FROM users WHERE created_at >= ?) AS new_week""",
+        (today.isoformat(), (now() - timedelta(minutes=5)).isoformat(sep=" "),
+         (today - timedelta(days=6)).isoformat())).fetchone()
+    # Oxirgi 14 kun: kirishlar va yangi ro'yxatdan o'tganlar (bo'sh kunlar ham ko'rinsin)
+    logins = dict(db.execute("SELECT substr(login_at, 1, 10), COUNT(DISTINCT user_id) FROM login_sessions"
+                             " WHERE login_at >= ? GROUP BY 1", (start.isoformat(),)).fetchall())
+    signups = dict(db.execute("SELECT substr(created_at, 1, 10), COUNT(*) FROM users"
+                              " WHERE created_at >= ? GROUP BY 1", (start.isoformat(),)).fetchall())
+    days = [(start + timedelta(days=i)).isoformat() for i in range(14)]
+    daily = [{"day": d, "logins": logins.get(d, 0), "signups": signups.get(d, 0)} for d in days]
+    recent_users = db.execute("SELECT id, full_name, role, group_name, created_at FROM users"
+                              " ORDER BY id DESC LIMIT 6").fetchall()
+    recent_resources = db.execute(
+        "SELECT r.id, r.title, r.ext, r.created_at, u.full_name AS teacher_name FROM resources r"
+        " JOIN users u ON u.id = r.teacher_id ORDER BY r.id DESC LIMIT 6").fetchall()
+    top = db.execute(
+        f"SELECT r.id, r.title, s.score, s.like_count, r.downloads FROM ({SCORE_SQL}) s"
+        " JOIN resources r ON r.id = s.resource_id WHERE r.hidden = 0 ORDER BY s.score DESC LIMIT 5").fetchall()
+    return render_template("admin_dashboard.html", c=counts, daily=daily, recent_users=recent_users,
+                           recent_resources=recent_resources, top=top)
+
+
 @app.route("/admin/foydalanuvchilar", methods=["GET", "POST"])
 @login_required("admin")
 def admin_users():
@@ -1033,6 +1118,9 @@ def admin_departments():
             elif kind == "specialty" and name and request.form.get("department"):
                 db.execute("INSERT INTO specialties (name, department_id, approved, created_by) VALUES (?, ?, 1, ?)",
                            (name, request.form["department"], current_user()["id"]))
+            elif kind == "group" and name:
+                db.execute("INSERT INTO groups (name, department_id) VALUES (?, ?)",
+                           (name[:30], request.form.get("department") or None))
             db.commit()
         except sqlite3.IntegrityError:
             flash("Bunday nom allaqachon mavjud.", "error")
@@ -1044,7 +1132,33 @@ def admin_departments():
         " ORDER BY s.approved, d.name, s.name").fetchall()
     deps = db.execute("SELECT d.*, (SELECT COUNT(*) FROM resources WHERE department_id = d.id) AS resource_count"
                       " FROM departments d ORDER BY name").fetchall()
-    return render_template("admin_departments.html", departments=deps, specialties=specs)
+    grs = db.execute("SELECT gr.*, d.name AS department_name,"
+                     " (SELECT COUNT(*) FROM users WHERE group_name = gr.name AND role = 'student') AS student_count"
+                     " FROM groups gr LEFT JOIN departments d ON d.id = gr.department_id ORDER BY gr.name").fetchall()
+    return render_template("admin_departments.html", departments=deps, specialties=specs, groups=grs)
+
+
+@app.route("/admin/guruh/<int:gid>/<action>", methods=["POST"])
+@login_required("admin")
+def admin_group_action(gid, action):
+    db = get_db()
+    if action == "saqlash":
+        name = request.form.get("name", "").strip()[:30]
+        old = db.execute("SELECT name FROM groups WHERE id = ?", (gid,)).fetchone()
+        if name and old:
+            try:
+                db.execute("UPDATE groups SET name = ?, department_id = ? WHERE id = ?",
+                           (name, request.form.get("department") or None, gid))
+                # Guruh nomi o'quvchilar yozuvida ham yangilanadi
+                db.execute("UPDATE users SET group_name = ? WHERE group_name = ?", (name, old["name"]))
+            except sqlite3.IntegrityError:
+                flash("Bunday guruh allaqachon mavjud.", "error")
+    elif action == "ochirish":
+        db.execute("DELETE FROM groups WHERE id = ?", (gid,))
+    else:
+        abort(404)
+    db.commit()
+    return redirect(url_for("admin_departments") + "#guruhlar")
 
 
 @app.route("/admin/kafedra/<int:did>/<action>", methods=["POST"])

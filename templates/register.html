@@ -1,20 +1,39 @@
 {% extends "base.html" %}
 {% block title %}Ro'yxatdan o'tish · Bilimlar manbai{% endblock %}
 {% block content %}
-<div class="card narrow" style="max-width:520px">
+{% set role = form.role or 'user' %}
+<div class="card narrow" style="max-width:540px">
   <img class="i3d lg card-icon" src="{{ url_for('static', filename='icons/cap.webp') }}" alt="">
   <h1>Ro'yxatdan o'tish</h1>
-  <p class="muted">Bu sahifa o'quvchilar uchun. O'qituvchilarga login va parolni administrator beradi.</p>
-  <form method="post">
+  <p class="muted">O'qituvchilarga login va parolni administrator beradi.</p>
+  <form method="post" id="reg">
     <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <div class="role-pick" role="radiogroup" aria-label="Kim sifatida">
+      <label class="role-opt">
+        <input type="radio" name="role" value="user" {{ 'checked' if role == 'user' }}>
+        <span><img src="{{ url_for('static', filename='icons/globe.webp') }}" alt=""><b>Foydalanuvchi</b><small>Texnikumdan tashqaridagi qiziquvchilar</small></span>
+      </label>
+      <label class="role-opt">
+        <input type="radio" name="role" value="student" {{ 'checked' if role == 'student' }}>
+        <span><img src="{{ url_for('static', filename='icons/cap.webp') }}" alt=""><b>O'quvchi</b><small>Texnikumda o'qiyman</small></span>
+      </label>
+    </div>
     <label>Familiya va ism <input name="full_name" required minlength="5" value="{{ form.full_name or '' }}" placeholder="Masalan: Rahimov Azizbek" autocomplete="name"></label>
-    <div class="two" style="gap:12px">
-      <label>Guruh <input name="group_name" value="{{ form.group_name or '' }}" placeholder="MS-21"></label>
+    <div class="two student-only" style="gap:12px">
       <label>Kafedra
-        <select name="department"><option value="">— tanlang —</option>
+        <select name="department" id="r-dep"><option value="">— tanlang —</option>
           {% for d in departments %}<option value="{{ d.id }}" {{ 'selected' if form.department == d.id|string }}>{{ d.name }}</option>{% endfor %}
         </select>
       </label>
+      {% if groups %}
+      <label>Guruh
+        <select name="group_id" id="r-group"><option value="">— tanlang —</option>
+          {% for gr in groups %}<option value="{{ gr.id }}" data-dep="{{ gr.department_id or '' }}" {{ 'selected' if form.group_id == gr.id|string }}>{{ gr.name }}</option>{% endfor %}
+        </select>
+      </label>
+      {% else %}
+      <label>Guruh <input name="group_name" id="r-group" value="{{ form.group_name or '' }}" placeholder="MS-21"></label>
+      {% endif %}
     </div>
     <label>Login <input name="username" required pattern="[A-Za-z0-9_.]{3,30}" value="{{ form.username or '' }}" placeholder="azizbek_r" autocomplete="username"></label>
     <div class="two" style="gap:12px">
@@ -26,4 +45,19 @@
     <div class="form-foot"><span class="small muted">Akkauntingiz bormi? <a href="{{ url_for('login') }}">Kirish</a></span></div>
   </form>
 </div>
+<script>
+(() => {
+  const form = document.getElementById('reg'), dep = document.getElementById('r-dep'), group = document.getElementById('r-group');
+  // O'quvchi tanlansa kafedra va guruh maydonlari chiqadi
+  const sync = () => {
+    const student = form.role.value === 'student';
+    form.querySelectorAll('.student-only').forEach(el => el.hidden = !student);
+    group.required = student;
+    if (group.tagName === 'SELECT') for (const o of group.options)
+      if (o.dataset.dep) o.hidden = dep.value && o.dataset.dep !== dep.value;
+  };
+  form.addEventListener('change', sync);
+  sync();
+})();
+</script>
 {% endblock %}

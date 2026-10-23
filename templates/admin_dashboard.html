@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Boshqaruv paneli · Bilimlar manbai{% endblock %}
+{% macro icon(name, cls='') %}<img class="{{ cls }}" src="{{ url_for('static', filename='icons/' ~ name ~ '.webp') }}" alt="">{% endmacro %}
+{% block content %}
+<div class="dash-head">
+  <div>
+    <h1>Boshqaruv paneli</h1>
+    <p class="muted">Bugun saytga {{ c.today_users }} kishi kirdi, hozir {{ c.online }} kishi onlayn.</p>
+  </div>
+  <a class="btn" href="{{ url_for('admin_users') }}">{{ icon('cap', 'i3d') }} Foydalanuvchi qo'shish</a>
+</div>
+
+{% if c.pending_specs or c.hidden %}
+<div class="dash-alerts">
+  {% if c.pending_specs %}<a class="dash-alert glass" href="{{ url_for('admin_departments') }}">{{ icon('bell') }}<span><b>{{ c.pending_specs }} ta mutaxassislik</b> tasdiqlanishini kutyapti</span><i>→</i></a>{% endif %}
+  {% if c.hidden %}<div class="dash-alert glass">{{ icon('lock') }}<span><b>{{ c.hidden }} ta resurs</b> yashirilgan</span></div>{% endif %}
+</div>
+{% endif %}
+
+<div class="dash-kpis">
+  {% for ic, val, label, sub in [
+    ('cap', c.students, "o'quvchi", None),
+    ('building', c.teachers, "o'qituvchi", None),
+    ('globe', c.guests, 'foydalanuvchi', None),
+    ('books', c.resources, 'resurs', c.views ~ ' marta ko\'rilgan'),
+    ('upload', c.downloads, 'yuklab olish', None),
+    ('heart', c.likes, 'like', c.comments ~ ' ta izoh'),
+  ] %}
+  <div class="dash-kpi glass">{{ icon(ic) }}<div><b>{{ val }}</b><span>{{ label }}</span>{% if sub %}<small>{{ sub }}</small>{% endif %}</div></div>
+  {% endfor %}
+</div>
+
+<div class="dash-grid">
+  <section class="glass dash-card wide">
+    <div class="dash-card-head"><h2>Oxirgi 14 kun</h2>
+      <span class="legend"><i class="l1"></i> kirganlar <i class="l2"></i> yangi ro'yxatdan o'tganlar</span></div>
+    {% set mx = [daily|map(attribute='logins')|max, daily|map(attribute='signups')|max, 1]|max %}
+    <div class="dash-chart">
+      {% for d in daily %}
+      <div class="col" title="{{ d.day }}: {{ d.logins }} kirgan, {{ d.signups }} yangi">
+        <div class="pair"><span class="b1" style="height: {{ (d.logins / mx * 100)|round }}%"></span><span class="b2" style="height: {{ (d.signups / mx * 100)|round }}%"></span></div>
+        <small>{{ d.day[8:] }}</small>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="muted small">Bu hafta {{ c.new_week }} kishi ro'yxatdan o'tdi. Batafsil: <a href="{{ url_for('admin_stats') }}">Statistika</a></p>
+  </section>
+
+  <section class="glass dash-card">
+    <div class="dash-card-head"><h2>Yangi foydalanuvchilar</h2><a class="small" href="{{ url_for('admin_users') }}">Hammasi</a></div>
+    <ul class="dash-list">
+      {% for x in recent_users %}
+      <li><span class="avatar">{{ x.full_name[:1]|upper }}</span>
+        <div><a href="{{ url_for('admin_user_sessions', uid=x.id) }}">{{ x.full_name }}</a>
+          <small class="muted">{{ ROLE_NAMES[x.role] }}{% if x.group_name %} · {{ x.group_name }}{% endif %} · {{ x.created_at[:10] }}</small></div></li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="glass dash-card">
+    <div class="dash-card-head"><h2>Yangi resurslar</h2><a class="small" href="{{ url_for('index') }}">Hammasi</a></div>
+    <ul class="dash-list">
+      {% for r in recent_resources %}
+      <li><span class="ext-pill">{{ r.ext|upper }}</span>
+        <div><a href="{{ url_for('resource', rid=r.id) }}">{{ r.title }}</a>
+          <small class="muted">{{ r.teacher_name }} · {{ r.created_at[:10] }}</small></div></li>
+      {% else %}<li class="muted">Hali resurs yo'q.</li>{% endfor %}
+    </ul>
+  </section>
+
+  <section class="glass dash-card">
+    <div class="dash-card-head"><h2>Eng yaxshi resurslar</h2><a class="small" href="{{ url_for('teacher_rating') }}">Reyting</a></div>
+    <ol class="dash-list ranked">
+      {% for r in top %}
+      <li><span class="rank">{{ loop.index }}</span>
+        <div><a href="{{ url_for('resource', rid=r.id) }}">{{ r.title }}</a>
+          <small class="muted">{{ r.score|round(1) }} ball · ❤ {{ r.like_count }} · ⬇ {{ r.downloads }}</small></div></li>
+      {% else %}<li class="muted">Hali resurs yo'q.</li>{% endfor %}
+    </ol>
+  </section>
+</div>
+{% endblock %}
