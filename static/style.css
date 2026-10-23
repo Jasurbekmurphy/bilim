@@ -11,7 +11,7 @@
   --bg: #070b1a;
   --text: #e9ecf8; --text-2: #c9cfea; --muted: #9aa3c4; --placeholder: #737c9f;
   --link: #a5b4fc; --link-hover: #fff;
-  --glass: rgba(255,255,255,.065); --glass-strong: rgba(255,255,255,.11);
+  --glass: rgba(255,255,255,.065); --glass-strong: rgba(255,255,255,.11); --topbar-bg: rgba(16,18,40,.985);
   --glass-border: rgba(255,255,255,.14); --glass-hi: rgba(255,255,255,.24);
   --tint-1: rgba(255,255,255,.04); --tint-2: rgba(255,255,255,.08); --tint-3: rgba(255,255,255,.16);
   --inner-hi: inset 0 1px 0 rgba(255,255,255,.08);
@@ -26,7 +26,7 @@
   --bg: #eef1fb;
   --text: #141933; --text-2: #2f3758; --muted: #5d6689; --placeholder: #8d95b4;
   --link: #5b47e0; --link-hover: #2c1fa8;
-  --glass: rgba(255,255,255,.58); --glass-strong: rgba(255,255,255,.78);
+  --glass: rgba(255,255,255,.58); --glass-strong: rgba(255,255,255,.78); --topbar-bg: rgba(250,251,255,.985);
   --glass-border: rgba(255,255,255,.9); --glass-hi: rgba(139,92,246,.35);
   --tint-1: rgba(30,36,80,.035); --tint-2: rgba(30,36,80,.06); --tint-3: rgba(30,36,80,.12);
   --inner-hi: inset 0 1px 0 rgba(255,255,255,.9);
@@ -83,6 +83,7 @@ h2 { font-size: 19px; margin: 28px 0 12px; letter-spacing: -.01em; }
   position: sticky; top: 12px; z-index: 50; margin: 12px auto 0; max-width: 1240px; width: calc(100% - 24px);
   border-radius: 20px; display: flex; align-items: center; gap: 14px; padding: 10px 14px;
 }
+.topbar { background: var(--topbar-bg); }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px; color: var(--text) !important; white-space: nowrap; }
 .brand .logo { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: var(--accent);
   box-shadow: 0 6px 20px rgba(139,92,246,.45); }
@@ -269,17 +270,18 @@ code { background: var(--tint-2); padding: 2px 7px; border-radius: 6px; }
   background: var(--face-bg); border: 1px solid rgba(255,255,255,.4);
   box-shadow: inset 0 0 40px rgba(255,255,255,.12); font-weight: 700; color: #fff; backface-visibility: hidden; }
 .face img { display: block; width: 104px; height: 104px; margin: 0 auto 8px; filter: drop-shadow(0 12px 18px rgba(10,10,40,.35)); }
-.face span { font-size: 15px; letter-spacing: .02em; text-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.face > div { padding: 0 12px; }
+.face span { display: block; line-height: 1.25; font-size: 15px; letter-spacing: .02em; text-shadow: 0 2px 8px rgba(0,0,0,.25); }
 .f1 { transform: translateZ(120px); } .f2 { transform: rotateY(90deg) translateZ(120px); } .f3 { transform: rotateY(180deg) translateZ(120px); }
 .f4 { transform: rotateY(-90deg) translateZ(120px); } .f5 { transform: rotateX(90deg) translateZ(120px); } .f6 { transform: rotateX(-90deg) translateZ(120px); }
 @media (max-width: 420px) { .scene { width: 260px; height: 260px; } .f1 { transform: translateZ(80px); } .f2 { transform: rotateY(90deg) translateZ(80px); }
   .f3 { transform: rotateY(180deg) translateZ(80px); } .f4 { transform: rotateY(-90deg) translateZ(80px); } .f5 { transform: rotateX(90deg) translateZ(80px); }
-  .f6 { transform: rotateX(-90deg) translateZ(80px); } .face img { width: 70px; height: 70px; } }
+  .f6 { transform: rotateX(-90deg) translateZ(80px); } .face img { width: 70px; height: 70px; margin-bottom: 6px; } .face span { font-size: 12px; } }
 .float { position: absolute; display: flex; align-items: center; gap: 8px; border-radius: 18px; background: var(--glass-strong); border: 1px solid var(--glass-border);
   backdrop-filter: var(--blur); padding: 8px 14px 8px 8px; font-size: 13px; font-weight: 600; box-shadow: var(--shadow); animation: bob 6s ease-in-out infinite; white-space: nowrap; z-index: 2; }
 .float img { width: 34px; height: 34px; }
 .float.b { bottom: 6%; right: -16%; animation-delay: -3s; }
-@media (max-width: 900px) { .float.b { right: -4%; } }
+@media (max-width: 900px) { .float.b { right: auto; left: 50%; bottom: -30%; translate: -50% 0; } .hero .scene { margin-bottom: 70px; } }
 @keyframes bob { 50% { transform: translateY(-14px); } }
 /* Fon bo'ylab suzuvchi 3D ikonkalar */
 .hero-icons img { position: absolute; z-index: 1; pointer-events: none; filter: drop-shadow(0 18px 24px rgba(20,20,60,.3)); animation: bob 7s ease-in-out infinite; }
